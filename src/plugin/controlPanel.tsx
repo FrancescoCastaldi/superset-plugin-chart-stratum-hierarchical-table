@@ -177,7 +177,7 @@ const config: ControlPanelConfig = {
               choices: [
                 ['none', t('None (no horizontal total)')],
                 ['left', t('Left / start (Qlik Sense style, before the pivot columns)')],
-                ['right', t('Destra / Fine (Stile Classico / Excel - In fondo alla tabella)')],
+                ['right', t('Right / end (classic Excel style, at the end of the table)')],
               ],
               description: t(
                 'Places the row totals macro-column on the left (Qlik Sense style) or on the right.',
@@ -1084,7 +1084,7 @@ const config: ControlPanelConfig = {
             name: 'crossFilterAppliesToSelf',
             config: {
               type: 'CheckboxControl',
-              label: t('Filtra anche questa tabella'),
+              label: t('Also filter this table'),
               renderTrigger: true,
               default: false,
               description: t(

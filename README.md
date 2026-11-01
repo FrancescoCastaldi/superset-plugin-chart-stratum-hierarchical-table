@@ -44,6 +44,15 @@ Frontend visualization plugin for **Apache Superset 6.1.0+** providing a rich, i
 - **Trend Sparklines and Indicators**: A Trend column per metric over the periods, and icons on conditional formatting rules.
 - **Interactive What-If Simulation & Scenario Manager**: Real-time simulation toolbar with sliders (-50% to +50%), leaf-level multiplier recalculation, ratio and subtotal rollup consistency, polarity-aware in-cell delta badges (▲/▼), preset scenario saving in session storage, and enriched CSV export.
 
+## 🔗 Cross-filtering: how to turn it on
+
+1. **In the chart** (Explore, section *Interaction*/*Cross-filtering*): the option **Emit Dashboard Cross-Filters** is on by default. Turn it off to stop the chart from filtering the others.
+2. **On the dashboard**: cross-filtering is enabled by default in Superset 6 (feature flag `DASHBOARD_CROSS_FILTERS`). Open the filter bar and its *Cross-filters* tab to choose which charts a filter reaches.
+3. **Use it**: Tick the checkbox of a row: the other charts are filtered by the path of that node (for example territory and country). Tick several rows to combine them. The other charts reload and show a filter badge in their header.
+4. **Clear it**: click the same item again, or use *Clear all* in the filter bar.
+
+The other charts must have the filtered column in their dataset: a chart without it ignores the filter. Turn on *Also filter this table* to apply the selection to the table itself, which then shows only the selected rows.
+
 ## Installation & Setup
 
 Install the plugin dependency:
