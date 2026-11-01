@@ -296,7 +296,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
 
         // Base metric content
         const baseContent = isNuovo ? (
-          <span className="badge-delta-nuovo">Nuovo</span>
+          <span className="badge-delta-nuovo">New</span>
         ) : isDelta && typeof val === 'number' ? (
           col?.key?.endsWith('___delta') ? (
             <span
@@ -1243,7 +1243,7 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
             onContextMenu={onContextMenu ? e => handleContextMenu(e, null, col) : undefined}
           >
             {isNuovo ? (
-              <span className="badge-delta-nuovo">Nuovo</span>
+              <span className="badge-delta-nuovo">New</span>
             ) : isDelta && typeof val === 'number' ? (
               col?.key?.endsWith('___delta') ? (
                 <span

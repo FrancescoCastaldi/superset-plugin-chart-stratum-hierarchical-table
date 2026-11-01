@@ -2,25 +2,25 @@
 
 Frontend visualization plugin for **Apache Superset 6.1.0+** providing a rich, interactive Tree Table and Matrix Grid Chart Plugin (StratumTree) with multi-level rollup aggregations, parent-child graph resolution, cross-filtering, explicit metric semantics, confidence intervals and small-number suppression for health data.
 
-![StratumTree Dev Studio Live Demo](docs/images/dev_studio_demo.gif)
+![StratumTree in Superset](docs/images/demo.gif)
 
-*Live Dev Studio: Interactive workbench featuring real-time Explore control panel synchronization, dual-mode hierarchy tree, multi-pivot matrix, and sub-50ms Hot Module Reloading.*
+*Recorded in Chrome on a running Superset: expanding all levels, searching the hierarchy and collapsing it again.*
 
 ---
 
 ## 📸 Visual Preview
 
-### 🖥️ Live Production Dashboard Showcase
+### 🖥️ Screenshots from Superset
 
-![StratumTree Live Production Dashboard](docs/images/live_dashboard_showcase.png)
+![StratumTree on a dashboard](docs/images/live_dashboard_showcase.png)
 
-*Figure 1: StratumTree (Hierarchical Table) v0.4.0 live production rendering on Apache Superset with hospital activity roll-ups, expandable presidio and regime nodes, dynamic subtotals, grand total, quick level views (All, Leaves, Parents), and instant CSV export.*
+*Figure 1: StratumTree on Superset's example sales data: territory, country and product line with subtotals, a grand total, heatmap shading, search and CSV export.*
 
 ### 🌳 Tree Hierarchy & Advanced Matrix View
 
-![Hierarchical Table Preview](docs/images/hierarchical_table_preview.jpg)
+![StratumTree pivot](docs/images/hierarchical_table_preview.jpg)
 
-*Figure 2: StratumTree multi-level tree hierarchy with interactive What-If simulation, in-cell variance badges, and conditional formatting.*
+*Figure 2: A pivot by year: product line and deal size down the side, years across the top.*
 
 ---
 
@@ -118,37 +118,25 @@ dev.bat
 
 The workbench opens at `http://localhost:5173/` with sub-50ms Hot Module Reloading (HMR).
 
-### Dev Studio Workbench Showcase
+### More views
 
-#### 1. Healthcare & Hospital Operations (Suppression & Variance)
+Screenshots of real charts in Chrome, on Superset's example sales data.
 
-![Healthcare Overview](docs/images/dev_studio_healthcare_overview.png)
+#### Hierarchy with heatmap shading
 
-Multi-level regional healthcare hierarchy (Regione, ASL, Ospedale, Reparto) with admissions, bed occupancy rates, reference period variance (`delta_*_pct`), and small-number privacy suppression (`<5` patient privacy threshold). Explore panel controls on the left allow real-time parameter tweaking with immediate visual feedback.
+![Hierarchy with heatmap](docs/images/tree_overview.png)
 
-#### 2. Sales Multi-Pivot Matrix (In-Cell Data Bars & Heatmap)
+#### Pivot by year
 
-![Sales Multi-Pivot](docs/images/dev_studio_sales_pivot.png)
+![Pivot](docs/images/tree_pivot.png)
 
-Multi-dimensional pivot matrix by Quarter and Sales Channel. Demonstrates interactive rollup semantics, in-cell bipolar data bars, currency and percentage number formatters, automatic subtotals, and column grand totals.
+#### Many rows, three levels deep
 
-#### 3. High-Volume Virtualization Stress Test (5,000 Rows)
+![Many rows](docs/images/tree_many_rows.png)
 
-![Virtualization Stress Test](docs/images/dev_studio_stress_test.png)
+#### In-cell data bars
 
-Windowed rendering benchmark demonstrating smooth 60fps scrolling and sub-second calculation pipeline across 5,000 deep hierarchical tree rows with live memory tracking.
-
-#### 4. Interactive What-If Simulation & Scenario Manager
-
-![What-If Simulation Showcase](docs/images/dev_studio_whatif_simulation.png)
-
-Real-time calculation engine applying multiplicative percentage variations strictly to leaf records while maintaining mathematical rollup integrity across parent subtotals, weighted averages, and ratio metrics. Directional delta badges with polarity sensitivity highlight simulated gains and losses directly in-cell, accompanied by preset saving and enriched CSV export.
-
-#### 5. Superset REST API Automation Modal (`POST /api/v1/chart/`)
-
-![Superset REST API Modal](docs/images/dev_studio_api_export_modal.png)
-
-Direct chart provisioning dialog conforming to the official Apache Superset REST API specification. Features `ChartPostSchema` validation, copyable cURL, Python and PowerShell code snippets with JWT authentication and CSRF protection, plus one-click in-browser chart creation.
+![Data bars](docs/images/tree_data_bars.png)
 
 ### Dev Studio Features
 

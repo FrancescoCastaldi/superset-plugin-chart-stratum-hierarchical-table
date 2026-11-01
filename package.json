@@ -1,6 +1,6 @@
 {
   "name": "superset-plugin-chart-hierarchical-table",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "description": "Apache Superset 6.1.0 Hierarchical Table & Matrix Grid Chart Plugin",
   "homepage": "https://francescocastaldi.github.io/superset-plugin-chart-hierarchical-table/",
   "repository": {
