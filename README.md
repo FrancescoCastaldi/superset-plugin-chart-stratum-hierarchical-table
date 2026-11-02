@@ -1,4 +1,4 @@
-# @superset-plugin-chart/hierarchical-table
+# StratumTree (Hierarchical Table & Matrix Grid) - Plugin for Apache Superset
 
 Frontend visualization plugin for **Apache Superset 6.1.0+** providing a rich, interactive Tree Table and Matrix Grid Chart Plugin (StratumTree) with multi-level rollup aggregations, parent-child graph resolution, cross-filtering, explicit metric semantics, confidence intervals and small-number suppression for health data.
 
