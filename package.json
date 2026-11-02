@@ -1,11 +1,11 @@
 {
-  "name": "superset-plugin-chart-hierarchical-table",
+  "name": "superset-plugin-chart-stratum-hierarchical-table",
   "version": "0.14.2",
   "description": "StratumTree: Apache Superset 6.1.0 Hierarchical Table & Matrix Grid Chart Plugin",
-  "homepage": "https://francescocastaldi.github.io/superset-plugin-chart-hierarchical-table/",
+  "homepage": "https://francescocastaldi.github.io/superset-plugin-chart-stratum-hierarchical-table/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table.git"
+    "url": "https://github.com/FrancescoCastaldi/superset-plugin-chart-stratum-hierarchical-table.git"
   },
   "main": "dist/index.esm.js",
   "module": "dist/index.esm.js",

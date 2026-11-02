@@ -5,9 +5,9 @@
     Installs and registers the Hierarchical Table chart plugin into an Apache Superset repository:
     1. Locates and validates the Apache Superset root directory.
     2. Builds the plugin (TypeScript compilation) if npm is available.
-    3. Copies plugin files into superset-frontend/plugins/superset-plugin-chart-hierarchical-table.
+    3. Copies plugin files into superset-frontend/plugins/superset-plugin-chart-stratum-hierarchical-table.
     4. Safely parses and updates MainPreset.ts with backup and idempotency:
-       - import { HierarchicalTableChartPlugin } from '../../../plugins/superset-plugin-chart-hierarchical-table/src';
+       - import { HierarchicalTableChartPlugin } from '../../../plugins/superset-plugin-chart-stratum-hierarchical-table/src';
        - new HierarchicalTableChartPlugin().configure({ key: 'hierarchical_table' }),
        Legacy registration variants (`.register()` lines, odd indentation, duplicates)
        are normalized to the canonical form instead of adding new lines.
@@ -217,7 +217,11 @@ if (-not (Test-Path $PluginsTargetRoot)) {
     New-Item -ItemType Directory -Path $PluginsTargetRoot -Force | Out-Null
 }
 
-$DestPluginDir = Join-Path $PluginsTargetRoot "superset-plugin-chart-hierarchical-table"
+$DestPluginDir = Join-Path $PluginsTargetRoot "superset-plugin-chart-stratum-hierarchical-table"
+$LegacyPluginDir = Join-Path $PluginsTargetRoot "superset-plugin-chart-hierarchical-table"
+if (Test-Path $LegacyPluginDir) {
+    Remove-Item -Recurse -Force $LegacyPluginDir -ErrorAction SilentlyContinue
+}
 if (Test-Path $DestPluginDir) {
     Write-Color "[INFO] Cleaning the previous version in '$DestPluginDir'..." "Yellow"
     try {
@@ -288,8 +292,8 @@ if (-not (Test-Path $BackupFile)) {
 $RawContent = [System.IO.File]::ReadAllText($PresetFile, [System.Text.Encoding]::UTF8)
 $NL = if ($RawContent.Contains("`r`n")) { "`r`n" } else { "`n" }
 
-$TargetImport = "import { HierarchicalTableChartPlugin } from '../../../plugins/superset-plugin-chart-hierarchical-table/src';"
-$TargetRegister = "        new HierarchicalTableChartPlugin().configure({ key: 'hierarchical_table' }),"
+$TargetImport = "import { HierarchicalTableChartPlugin } from '../../../plugins/superset-plugin-chart-stratum-hierarchical-table/src';"
+$TargetRegister = "        new HierarchicalTableChartPlugin().configure({ key: 'stratum_tree' }),`r`n        new HierarchicalTableChartPlugin().configure({ key: 'hierarchical_table' }),"
 
 # Verifica se il file e' gia' configurato NELLA FORMA CANONICA (riga-esatta):
 # le varianti legacy (riga con `.register()`, indentazioni anomale, duplicati)

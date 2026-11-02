@@ -58,7 +58,7 @@ The other charts must have the filtered column in their dataset: a chart without
 Install the plugin dependency:
 
 ```bash
-npm install superset-plugin-chart-hierarchical-table
+npm install superset-plugin-chart-stratum-hierarchical-table
 ```
 
 ### Registration in Superset
@@ -66,7 +66,7 @@ npm install superset-plugin-chart-hierarchical-table
 In `superset-frontend/src/visualizations/presets/MainPreset.ts` (or `MainPreset.js`):
 
 ```typescript
-import { HierarchicalTableChartPlugin } from 'superset-plugin-chart-hierarchical-table';
+import { HierarchicalTableChartPlugin } from 'superset-plugin-chart-stratum-hierarchical-table';
 
 new HierarchicalTableChartPlugin().configure({ key: 'hierarchical_table' }).register();
 ```
