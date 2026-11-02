@@ -301,7 +301,7 @@ $TargetRegister = "        new HierarchicalTableChartPlugin().configure({ key: '
 $PresetLineList = [System.Collections.Generic.List[string]]($RawContent -split "\r?\n")
 $hasExactImport = ($PresetLineList -contains $TargetImport)
 $hasExactRegister = ($PresetLineList -contains $TargetRegister)
-$importCount = ([regex]::Matches($RawContent, "from\s*['`"][^'`"]*superset-plugin-chart-hierarchical-table")).Count
+$importCount = ([regex]::Matches($RawContent, "HierarchicalTableChartPlugin")).Count
 $registerCount = ([regex]::Matches($RawContent, "new\s+HierarchicalTableChartPlugin")).Count
 
 if (-not $CleanReinstall -and $hasExactImport -and $hasExactRegister -and ($importCount -eq 1) -and ($registerCount -eq 1)) {
@@ -316,7 +316,7 @@ if (-not $CleanReinstall -and $hasExactImport -and $hasExactRegister -and ($impo
 
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
-        if ($line -match "from\s*['`"][^'`"]*superset-plugin-chart-hierarchical-table") {
+        if ($line -match "from\s*['`"][^'`"]*superset-plugin-chart-(stratum-)?hierarchical-table" -or $line -match "HierarchicalTableChartPlugin") {
             continue
         }
         if ($line.Trim().StartsWith("import ")) {
