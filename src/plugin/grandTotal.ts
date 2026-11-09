@@ -2,9 +2,12 @@ import { DataRecord } from '@superset-ui/core';
 import { AggregationFunction, PivotTimeDeltaMode, TreeNode } from '../types';
 import { computeGrandTotal, rollupFunction } from '../utils/aggregations';
 import {
+  NATIVE_COMPARISON_SUFFIX,
   TimeDeltaStrategyConfig,
+  computeNativeTimeDelta,
   computePivotTimeDelta,
   computeTreeTimeDeltaByStrategy,
+  hasNativeComparison,
 } from '../utils/timeComparison';
 import { chronologicalOrder, collectDistinctPivotKeys } from './pivotOrdering';
 
@@ -22,6 +25,7 @@ export interface GrandTotalParams {
   weightColumn?: string;
   aggregationMode?: AggregationFunction;
   showVarianceDelta?: boolean;
+  showCalendarComparison?: boolean;
 }
 
 /**
@@ -42,6 +46,7 @@ export function buildGrandTotalNode({
   weightColumn = '',
   aggregationMode = 'sum',
   showVarianceDelta = false,
+  showCalendarComparison = true,
 }: GrandTotalParams): TreeNode | undefined {
   if (!showGrandTotal || treeData.length === 0) {
     return undefined;
@@ -73,7 +78,19 @@ export function buildGrandTotalNode({
     );
   }
 
-  if (isPivotMode && timeDeltaStrategy) {
+  if (isPivotMode && showCalendarComparison && hasNativeComparison(treeData, metrics)) {
+    // The grand total baseline is the sum of the root rows' baselines (the rows carry them).
+    for (const m of metrics) {
+      const key = `${m}${NATIVE_COMPARISON_SUFFIX}`;
+      let total: number | null = null;
+      for (const root of treeData) {
+        const value = root.metrics?.[key];
+        if (typeof value === 'number') total = (total ?? 0) + value;
+      }
+      if (total !== null) grandTotalNode.metrics[key] = total;
+    }
+    computeNativeTimeDelta([grandTotalNode], metrics, periodKeys());
+  } else if (isPivotMode && timeDeltaStrategy) {
     computeTreeTimeDeltaByStrategy([grandTotalNode], metrics, periodKeys(), timeDeltaStrategy);
   }
 

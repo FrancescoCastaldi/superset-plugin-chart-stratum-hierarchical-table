@@ -8,6 +8,7 @@ import {
   recomputeDerivedMetrics,
 } from './aggregations';
 import { toDimensionValue } from './dimensionValue';
+import { NATIVE_COMPARISON_SUFFIX, nativeOffsetValue } from './timeComparison';
 
 /**
  * Builds a hierarchical tree from flat records using an ordered list of dimensions.
@@ -99,6 +100,10 @@ export function buildMultiDimensionTree(
               } else if (pivotKey) {
                 const compositeMetricKey = `${m}___${pivotKey}`;
                 nodeObj.metrics[compositeMetricKey] = numVal;
+                const offset = nativeOffsetValue(record, m);
+                if (offset !== undefined) {
+                  nodeObj.metrics[`${m}${NATIVE_COMPARISON_SUFFIX}`] = offset ?? 0;
+                }
               }
             } else {
               nodeObj.metrics[m] = numVal;
@@ -146,6 +151,13 @@ export function buildMultiDimensionTree(
               } else if (pivotKey) {
                 const targetKey = `${m}___${pivotKey}`;
                 existingNode.metrics[targetKey] = mergeVal(existingNode.metrics[targetKey], numVal);
+              }
+              // The native comparison baseline of the row is the sum of its pivot values' offsets
+              const offset = pivotKey && !isMultiPivot ? nativeOffsetValue(record, m) : undefined;
+              if (offset !== undefined) {
+                const baselineKey = `${m}${NATIVE_COMPARISON_SUFFIX}`;
+                const previous = existingNode.metrics[baselineKey];
+                existingNode.metrics[baselineKey] = (typeof previous === 'number' ? previous : 0) + (offset ?? 0);
               }
             } else {
               existingNode.metrics[m] = mergeVal(existingNode.metrics[m], numVal);

@@ -243,17 +243,17 @@ const config: ControlPanelConfig = {
             name: 'pivotTimeDeltaMode',
             config: {
               type: 'SelectControl',
-              label: t('Automatic pivot delta mode'),
+              label: t('Variazione automatica tra colonne pivot'),
               default: 'none',
               renderTrigger: true,
               choices: [
-                ['none', t('None (no automatic delta)')],
-                ['absolute', t('Absolute delta (Δ = value - previous period)')],
-                ['percentage', t('Percentage delta (Δ% = (value - previous period) / previous period)')],
-                ['both', t('Both (absolute Δ + percentage Δ%)')],
+                ['none', t('Nessuna (nessuna variazione automatica)')],
+                ['absolute', t('Variazione assoluta (Δ = valore - periodo precedente)')],
+                ['percentage', t('Variazione percentuale (Δ% = (valore - periodo precedente) / periodo precedente)')],
+                ['both', t('Entrambe (Δ assoluta + Δ%)')],
               ],
               description: t(
-                'Calculates the time delta against the previous period along the pivot columns, without SQL window functions.',
+                'Calcola la variazione rispetto al periodo precedente lungo le colonne pivot, senza funzioni SQL window.',
               ),
               visibility: ({ controls }: { controls: any }) =>
                 controls?.hierarchyType?.value === 'multi_dimension' &&
@@ -264,20 +264,37 @@ const config: ControlPanelConfig = {
             name: 'pivotTimeDeltaLag',
             config: {
               type: 'SelectControl',
-              label: t('Delta comparison lag / offset (comparison step)'),
+              label: t('Passo di confronto (periodi indietro)'),
               default: 1,
               renderTrigger: true,
               choices: [
-                [1, t('1 period (e.g. previous month / MoM, previous year / YoY)')],
-                [2, t('2 Periodi')],
-                [3, t('3 periods (e.g. previous quarter / QoQ)')],
-                [12, t('12 periods (e.g. same month of the previous year / MoM-YoY)')],
+                [1, t('1 periodo (es. mese precedente / MoM, anno precedente / YoY)')],
+                [2, t('2 periodi')],
+                [3, t('3 periodi (es. trimestre precedente / QoQ)')],
+                [12, t('12 periodi (es. stesso mese dell\'anno precedente / YoY)')],
               ],
-              description: t('Number of periods back to use as the delta comparison.'),
+              description: t('Quanti periodi indietro usare come base della variazione.'),
               visibility: ({ controls }: { controls: any }) =>
                 controls?.hierarchyType?.value === 'multi_dimension' &&
                 Boolean(controls?.columns?.value && controls.columns.value.length > 0) &&
                 controls?.pivotTimeDeltaMode?.value !== 'none',
+            },
+          },
+        ],
+        [
+          {
+            name: 'show_calendar_comparison',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Confronto con il periodo di confronto del filtro Calendar'),
+              description: t(
+                'Il filtro Calendar della dashboard può avere un periodo corrente (T1) e un periodo di confronto (T2). Con questa opzione attiva, ogni riga mostra la variazione del totale del periodo corrente rispetto al totale del periodo di confronto, nelle colonne Δ e Δ%. Richiede una tabella pivot con una sola colonna pivot. Senza un periodo di confronto nel filtro non compare alcuna colonna di confronto.',
+              ),
+              default: true,
+              renderTrigger: true,
+              visibility: ({ controls }: { controls: any }) =>
+                controls?.hierarchyType?.value === 'multi_dimension' &&
+                Boolean(controls?.columns?.value && controls.columns.value.length === 1),
             },
           },
         ],
@@ -850,13 +867,13 @@ const config: ControlPanelConfig = {
             name: 'referencePeriod',
             config: {
               type: 'SelectControl',
-              label: t('Reference period'),
+              label: t('Periodo di riferimento'),
               default: 'current',
               renderTrigger: true,
               choices: [
-                ['current', t('Current active period')],
-                ['previous', t('Previous completed period')],
-                ['ytd', t('Year-to-Date (YTD)')],
+                ['current', t('Periodo attivo corrente')],
+                ['previous', t('Periodo completo precedente')],
+                ['ytd', t('Anno in corso (YTD)')],
               ],
               description: t(
                 'Baseline of the latest period: itself (no delta), the previous period, or the year-to-date average.',
@@ -870,13 +887,13 @@ const config: ControlPanelConfig = {
             name: 'comparisonType',
             config: {
               type: 'SelectControl',
-              label: t('Comparison baseline'),
+              label: t('Base di confronto'),
               default: 'prev_period',
               renderTrigger: true,
               choices: [
-                ['prev_period', t('Immediately Preceding Period (DoD / WoW / MoM / YoY)')],
-                ['prev_year_same_period', t('Same period in the prior year')],
-                ['budget_target', t('Budget / Target Baseline (Target Pianificato)')],
+                ['prev_period', t('Periodo immediatamente precedente (DoD / WoW / MoM / YoY)')],
+                ['prev_year_same_period', t('Stesso periodo dell\'anno precedente')],
+                ['budget_target', t('Budget / obiettivo (target pianificato)')],
               ],
               description: t(
                 'Baseline for the latest period delta. Budget / Target uses the matching Metric Goals target.',

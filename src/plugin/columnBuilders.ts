@@ -634,11 +634,15 @@ function periodComparisonTitle({ strategy, referencePeriod, timeGrain }: TimeDel
  * Appends, after every other column, the absolute and percentage delta of the current period
  * against the baseline of the time comparison strategy, under one header group.
  */
+/** Header of the delta columns against the comparison period of the calendar filter */
+export const CALENDAR_COMPARISON_TITLE = 'Δ vs periodo di confronto (filtro Calendar)';
+
 export function appendPeriodComparisonColumns(
   layout: ColumnLayout,
   metrics: string[],
   config: TimeDeltaStrategyConfig,
   format: ValueFormat,
+  titleOverride?: string,
 ): void {
   const multiple = metrics.length > 1;
   let count = 0;
@@ -673,7 +677,7 @@ export function appendPeriodComparisonColumns(
   }
   if (count > 0) {
     layout.pivotHeaderGroups.push({
-      title: periodComparisonTitle(config),
+      title: titleOverride ?? periodComparisonTitle(config),
       key: PERIOD_COMPARISON_GROUP_KEY,
       colSpan: count,
     });

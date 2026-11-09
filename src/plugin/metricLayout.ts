@@ -3,11 +3,13 @@ import { TreeNode } from '../types';
 import { computeHorizontalRowTotals } from '../utils/aggregations';
 import {
   TimeDeltaStrategyConfig,
+  computeNativeTimeDelta,
   computePivotTimeDelta,
   computeTreeTimeDeltaByStrategy,
   detectNaturalGrain,
 } from '../utils/timeComparison';
 import {
+  CALENDAR_COMPARISON_TITLE,
   ColumnLayout,
   appendPeriodComparisonColumns,
   appendSparklineColumns,
@@ -134,7 +136,17 @@ export function buildMetricLayout(
   });
 
   const timeDeltaStrategy = resolveTimeDeltaStrategy(options);
-  if (
+  // The calendar filter's comparison period (T2), when the dashboard sends one, takes precedence
+  // over the delta between pivot values.
+  if (options.showCalendarComparison && computeNativeTimeDelta(treeData, metrics, chronologicalPivotValues)) {
+    appendPeriodComparisonColumns(
+      layout,
+      metrics,
+      { strategy: 'prev_period', referencePeriod: 'previous', timeGrain: 'auto', goals: [] },
+      format,
+      CALENDAR_COMPARISON_TITLE,
+    );
+  } else if (
     timeDeltaStrategy &&
     computeTreeTimeDeltaByStrategy(treeData, metrics, chronologicalPivotValues, timeDeltaStrategy)
   ) {

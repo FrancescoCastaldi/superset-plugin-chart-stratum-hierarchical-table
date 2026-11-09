@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-11-09
+
+### Added
+- **Calendar filter comparison in pivot tables** (`show_calendar_comparison`, on by default): when the dashboard's calendar filter sends a comparison period (T2, `time_offsets`), a single-pivot table shows for every row the delta of the total of the current period against the total of the comparison period, in the columns "Δ vs periodo di confronto (filtro Calendar)" (Δ and Δ%). The baseline of each row is the sum of the offsets of its pivot values, rolled up to the parent rows and to the grand total. It takes precedence over the delta between pivot values. Without a comparison period in the filter nothing changes.
+
+### Changed
+- The comparison controls and the automatic pivot delta controls of the control panel are in Italian, with a clearer description for the calendar filter comparison. The rest of the control panel is still in English.
+
 ## [0.14.2] - 2026-11-01
 
 ### Changed

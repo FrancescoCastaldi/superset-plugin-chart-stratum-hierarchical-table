@@ -119,6 +119,7 @@ export default function transformProps(
     weightColumn: options.weightColumn,
     aggregationMode: options.aggregationMode,
     showVarianceDelta: options.showVarianceDelta,
+    showCalendarComparison: options.showCalendarComparison,
   });
   // Again with the grand total and the row totals, which only exist after the layout.
   applyMetricDefinitions(treeData, grandTotalNode, options.metricDefinitions, options.dimensions);

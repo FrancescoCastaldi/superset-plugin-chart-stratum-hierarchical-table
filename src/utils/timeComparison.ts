@@ -480,6 +480,76 @@ export function computePivotTimeDelta(
 }
 
 
+/**
+ * Chiave della base di confronto nativa, cioè del periodo di confronto (T2) del filtro Calendar.
+ * Per ogni riga contiene la somma dell'offset nativo di Superset (`${metrica}__${offset}`) su tutti
+ * i valori della colonna pivot, quindi il totale del periodo di confronto della riga.
+ */
+export const NATIVE_COMPARISON_SUFFIX = '___native_cmp';
+
+/**
+ * Valore dell'offset nativo di una metrica in un record (`Tot__1 year ago`).
+ * `undefined` se il record non ha la colonna di confronto, `null` se la colonna c'è ma è vuota.
+ */
+export function nativeOffsetValue(record: Record<string, unknown>, metric: string): number | null | undefined {
+  const prefix = `${metric}__`;
+  for (const key of Object.keys(record)) {
+    if (key.length > prefix.length && key.startsWith(prefix)) {
+      return toFiniteNumber(record[key]);
+    }
+  }
+  return undefined;
+}
+
+/** True when the tree carries a native comparison baseline for at least one base metric */
+export function hasNativeComparison(nodes: TreeNode[], metrics: string[]): boolean {
+  const keys = metrics.map(m => `${m}${NATIVE_COMPARISON_SUFFIX}`);
+  const visit = (node: TreeNode): boolean =>
+    keys.some(k => node.metrics?.[k] !== undefined) || (node.children ?? []).some(visit);
+  return nodes.some(visit);
+}
+
+/**
+ * Writes `${metric}___period_delta` and `___period_delta_pct` on every node: the current value is
+ * the sum over the pivot values, the baseline is the native comparison (T2 of the calendar filter).
+ * Returns false, leaving the tree untouched, when no node has a native baseline.
+ */
+export function computeNativeTimeDelta(
+  nodes: TreeNode[],
+  metrics: string[],
+  pivotValues: string[],
+): boolean {
+  if (!hasNativeComparison(nodes, metrics)) return false;
+  const baseMetrics = metrics.filter(
+    m => !m.toLowerCase().includes('delta') && !(m.toLowerCase().includes('variazione') || m.toLowerCase().includes('change')),
+  );
+
+  const visit = (node: TreeNode) => {
+    for (const m of baseMetrics) {
+      const rawBaseline = node.metrics?.[`${m}${NATIVE_COMPARISON_SUFFIX}`];
+      let delta: number | null = null;
+      let deltaPct: number | null = null;
+      if (rawBaseline !== undefined) {
+        const current = pivotValues.reduce<number | null>((sum, pv) => {
+          const value = toFiniteNumber(node.metrics?.[`${m}___${pv}`]);
+          return value === null ? sum : (sum ?? 0) + value;
+        }, null);
+        ({ delta, deltaPct } = toComparison(current, toFiniteNumber(rawBaseline)));
+      }
+      node.metrics[`${m}${PERIOD_DELTA_SUFFIX}`] = delta;
+      node.metrics[`${m}${PERIOD_DELTA_PCT_SUFFIX}`] = deltaPct;
+      if (node.subtotals) {
+        node.subtotals[`${m}${PERIOD_DELTA_SUFFIX}`] = delta;
+        node.subtotals[`${m}${PERIOD_DELTA_PCT_SUFFIX}`] = deltaPct;
+      }
+    }
+    node.children?.forEach(visit);
+  };
+
+  nodes.forEach(visit);
+  return true;
+}
+
 export function computeTreeTimeComparison(
   treeData: TreeNode[],
   baseMetrics: string[]

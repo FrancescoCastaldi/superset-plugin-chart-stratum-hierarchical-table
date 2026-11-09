@@ -64,6 +64,8 @@ export interface TransformOptions {
   dataBarZeroAxis?: boolean;
   enableExport: boolean;
   showVarianceDelta: boolean;
+  /** Delta against the comparison period (T2) sent by the dashboard's calendar filter */
+  showCalendarComparison: boolean;
   showVarianceBadges: boolean;
   resizableColumns: boolean;
   wrapHeaderLabels: boolean;
@@ -332,6 +334,8 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     dataBarZeroAxis: Boolean(mergedFormData.dataBarZeroAxis ?? mergedFormData.data_bar_zero_axis),
     enableExport: enableExport ?? enable_export ?? true,
     showVarianceDelta,
+    showCalendarComparison:
+      mergedFormData.show_calendar_comparison !== false && mergedFormData.showCalendarComparison !== false,
     showVarianceBadges: showVarianceBadges !== false,
     resizableColumns: Boolean(resizableColumns),
     wrapHeaderLabels: Boolean(wrapHeaderLabels),
