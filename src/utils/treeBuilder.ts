@@ -137,6 +137,14 @@ export function buildMultiDimensionTree(
               : isNaN(parseFloat(String(rawM)))
               ? null
               : parseFloat(String(rawM));
+          // The native baseline is the comparison of every pivot value, also of those whose current
+          // value is empty: skipping them would understate the comparison period of the row.
+          const offset = isPivot && pivotKey && !isMultiPivot ? nativeOffsetValue(record, m) : undefined;
+          if (offset !== undefined) {
+            const baselineKey = `${m}${NATIVE_COMPARISON_SUFFIX}`;
+            const previous = existingNode.metrics[baselineKey];
+            existingNode.metrics[baselineKey] = (typeof previous === 'number' ? previous : 0) + (offset ?? 0);
+          }
           if (numVal !== null) {
             if (isPivot) {
               if (isMultiPivot) {
@@ -151,13 +159,6 @@ export function buildMultiDimensionTree(
               } else if (pivotKey) {
                 const targetKey = `${m}___${pivotKey}`;
                 existingNode.metrics[targetKey] = mergeVal(existingNode.metrics[targetKey], numVal);
-              }
-              // The native comparison baseline of the row is the sum of its pivot values' offsets
-              const offset = pivotKey && !isMultiPivot ? nativeOffsetValue(record, m) : undefined;
-              if (offset !== undefined) {
-                const baselineKey = `${m}${NATIVE_COMPARISON_SUFFIX}`;
-                const previous = existingNode.metrics[baselineKey];
-                existingNode.metrics[baselineKey] = (typeof previous === 'number' ? previous : 0) + (offset ?? 0);
               }
             } else {
               existingNode.metrics[m] = mergeVal(existingNode.metrics[m], numVal);

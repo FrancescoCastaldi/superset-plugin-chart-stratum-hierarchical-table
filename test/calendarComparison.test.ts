@@ -58,6 +58,17 @@ describe('Calendar filter comparison (native time offsets) in pivot tables', () 
       expect(roma.metrics['totale___2026-01']).toBe(140);
     });
 
+    it('counts the comparison of pivot values whose current value is empty', () => {
+      const withEmptyCurrent = [
+        { presidio: 'Roma', mese: '2026-01', totale: 100, 'totale__1 year ago': 80 },
+        { presidio: 'Roma', mese: '2026-02', totale: null, 'totale__1 year ago': 30 },
+      ];
+      const tree = buildMultiDimensionTree(withEmptyCurrent, ['presidio'], ['totale'], ['mese']);
+      const roma = tree.find(n => n.name === 'Roma') as TreeNode;
+      expect(roma.metrics[`totale${NATIVE_COMPARISON_SUFFIX}`]).toBe(110);
+      expect(roma.metrics['totale___2026-01']).toBe(100);
+    });
+
     it('is absent when the records have no offset columns', () => {
       const plain = records.map(({ 'totale__1 year ago': _offset, ...rest }) => rest);
       const tree = buildMultiDimensionTree(plain, ['presidio'], ['totale'], ['mese']);

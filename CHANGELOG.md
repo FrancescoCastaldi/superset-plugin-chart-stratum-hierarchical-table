@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.1] - 2026-11-09
+
+### Fixed
+- The calendar filter comparison in pivot tables left out the comparison of the pivot values whose current value is empty. The total of the comparison period of a row, and so the Δ of the grand total, was understated. Those values are now counted.
+
 ## [0.15.0] - 2026-11-09
 
 ### Added
