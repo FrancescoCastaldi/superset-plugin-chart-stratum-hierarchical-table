@@ -22,6 +22,7 @@ import { applyTableCalculations } from '../utils/tableCalculations';
 import {
   applyPeriodLabels,
   detectComparisonOffset,
+  resolveComparisonLabel,
   resolvePeriodScope,
 } from '../utils/periodLabels';
 import { collectDistinctPivotKeys } from './pivotOrdering';
@@ -64,8 +65,21 @@ export default function transformProps(
   const { width, height, formData = {} as any, rawFormData = {} as any, queriesData, hooks, filterState } = chartProps as any;
   const { onAddFilter, setDataMask, onContextMenu, onReorderMetrics, onWhatIfChange } = hooks || {};
 
-  const options = resolveTransformOptions({ ...rawFormData, ...formData });
+  const resolvedOptions = resolveTransformOptions({ ...rawFormData, ...formData });
   const fetchedRecords: DataRecord[] = queriesData?.[0]?.data || [];
+  // The title of the comparison columns names the comparison period, from the time range of the
+  // query and the offset of the calendar filter.
+  const options = {
+    ...resolvedOptions,
+    comparisonLabel: resolveComparisonLabel(resolvedOptions.comparisonLabel, {
+      timeRange: { from: queriesData?.[0]?.from_dttm, to: queriesData?.[0]?.to_dttm },
+      offset: detectComparisonOffset(
+        fetchedRecords as Record<string, unknown>[],
+        resolvedOptions.metrics,
+        { ...rawFormData, ...formData },
+      ),
+    }),
+  };
   // The periods the query ran on come with the data, and are not data of the table.
   const periods = options.periodLabelsFromFilters ? readChartPeriods(fetchedRecords) : null;
   const dataRecords: DataRecord[] = options.periodLabelsFromFilters

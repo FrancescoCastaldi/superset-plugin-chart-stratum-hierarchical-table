@@ -29,6 +29,7 @@ Frontend visualization plugin for **Apache Superset 6.1.0+** providing a rich, i
 - **Four Macro-Sections Control Panel**: Organized canonically into `Data`, `Customize`, `Comparison & Analysis`, and `Performance & Limits`.
 - **Dual-Mode Hierarchy**: Multi-Dimension Level Grouping (e.g. Region, Country, City, Store) and Parent-Child Adjacency (ID / Parent ID / Label).
 - **Time Comparison & Variance**: Time grain, reference period (current, previous, ytd), and comparison strategy (prev_period, prev_year_same_period, budget_target) wired end-to-end against pivot periods.
+- **Paired Calendar Comparison**: when the dashboard's calendar filter sends a comparison period (T2), every value cell gets the same cell for T2 next to it, followed by its deltas (absolute, %, percentage points, ratio), on flat tables and on one or two pivot columns (e.g. Monday 2026 beside Monday 2025). Green/red by metric polarity. The previous single Δ per row is the `row_total` mode.
 - **Weighted Average Rollup**: Native `weighted_avg` aggregation with explicit `weightColumn` metric selection and fallback to arithmetic mean when weights sum to zero.
 - **Prioritized Conditional Formatting**: Cell, row, and column rules with operators (<, <=, ==, >=, >, between, regex) resolved by ascending priority order with static regex safety safeguards.
 - **Theme & Palette Profiles**: 5 nominal palette profiles (`standard`, `colorblind`, `stratum-warm`, `stratum-cool`, `custom`) with custom hex overrides and WCAG contrast ratio checks.

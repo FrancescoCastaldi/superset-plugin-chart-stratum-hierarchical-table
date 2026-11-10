@@ -349,10 +349,12 @@ const config: ControlPanelConfig = {
             name: 'calendar_comparison_label',
             config: {
               type: 'TextControl',
-              label: t('Nome della colonna di confronto'),
-              default: 'Confronto',
+              label: t('Titolo delle colonne di confronto'),
+              default: '{periodo}',
               renderTrigger: true,
-              description: t('Testo tra parentesi nel titolo delle colonne del periodo di confronto, es. Confronto o Anno prec.'),
+              description: t(
+                'Testo tra parentesi nel titolo delle colonne del periodo di confronto. {periodo} diventa il periodo di confronto in mese e anno (es. ott 2025), calcolato dal filtro Calendar; {corrente} il periodo corrente; {offset} lo scarto (es. 1 anno fa). Esempio: "Anno prec. {periodo}". Vuoto equivale a {periodo}.',
+              ),
               visibility: ({ controls }: { controls: any }) =>
                 controls?.hierarchyType?.value === 'multi_dimension' &&
                 controls?.show_calendar_comparison?.value !== false &&

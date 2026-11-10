@@ -9,6 +9,7 @@ import {
   computePairedDeltas,
   resolveComparisonFormats,
 } from '../src/plugin/pairedComparison';
+import { comparisonPeriodLabel, resolveComparisonLabel } from '../src/utils/periodLabels';
 import { TableColumn, TreeNode } from '../src/types';
 
 const OFFSET = '1 year ago';
@@ -21,7 +22,11 @@ const weekdayRecords = [
   { sede: 'B', giorno: 'Martedì', visite: null, [`visite__${OFFSET}`]: 40 },
 ];
 
-function run(formData: Record<string, unknown>, records: Record<string, unknown>[]) {
+function run(
+  formData: Record<string, unknown>,
+  records: Record<string, unknown>[],
+  range: { from_dttm?: unknown; to_dttm?: unknown } = {},
+) {
   return transformProps({
     width: 800,
     height: 400,
@@ -32,7 +37,7 @@ function run(formData: Record<string, unknown>, records: Record<string, unknown>
       ...formData,
     },
     rawFormData: {},
-    queriesData: [{ data: records }],
+    queriesData: [{ data: records, ...range }],
     hooks: {},
     filterState: {},
   } as any);
@@ -260,6 +265,63 @@ describe('paired calendar comparison', () => {
       const plain = weekdayRecords.map(({ [`visite__${OFFSET}`]: _o, ...rest }) => rest);
       const props = run({ columns: ['giorno'] }, plain);
       expect(keys(props.columns).some(k => k.endsWith('___comp'))).toBe(false);
+    });
+  });
+  describe('dynamic title of the comparison columns', () => {
+    const october2026 = { from: '2026-10-01T00:00:00', to: '2026-11-01T00:00:00' };
+
+    it('reads the comparison period from the range and the offset', () => {
+      expect(comparisonPeriodLabel(october2026, '1 year ago')).toBe('ott 2025');
+      expect(comparisonPeriodLabel(october2026, '1 month ago')).toBe('set 2026');
+    });
+
+    it('spans several months and names a whole year by its year', () => {
+      expect(
+        comparisonPeriodLabel({ from: '2026-07-01T00:00:00', to: '2026-10-01T00:00:00' }, '1 year ago'),
+      ).toBe('lug 2025 – set 2025');
+      expect(
+        comparisonPeriodLabel({ from: '2026-01-01T00:00:00', to: '2027-01-01T00:00:00' }, '1 year ago'),
+      ).toBe('2025');
+    });
+
+    it('puts the same span right before the current one for an inherited offset', () => {
+      // 31 days before October: 31 August to 30 September.
+      expect(comparisonPeriodLabel(october2026, 'inherited')).toBe('ago 2026 – set 2026');
+    });
+
+    it('is unknown without a range or with an offset it cannot read', () => {
+      expect(comparisonPeriodLabel({}, '1 year ago')).toBeNull();
+      expect(comparisonPeriodLabel(october2026, 'boh')).toBeNull();
+    });
+
+    it('fills the tokens of the template and falls back when they are unknown', () => {
+      const scope = { timeRange: october2026, offset: '1 year ago' };
+      expect(resolveComparisonLabel('', scope)).toBe('ott 2025');
+      expect(resolveComparisonLabel('Anno prec. {periodo}', scope)).toBe('Anno prec. ott 2025');
+      expect(resolveComparisonLabel('{corrente} vs {periodo}', scope)).toBe('ott 2026 vs ott 2025');
+      expect(resolveComparisonLabel('{offset}', scope)).toBe('1 anno fa');
+      expect(resolveComparisonLabel('', { offset: '1 year ago' })).toBe('1 anno fa');
+      expect(resolveComparisonLabel('', {})).toBe('Confronto');
+    });
+
+    it('titles the comparison columns with the period the filter compares against', () => {
+      const props = run({ columns: ['giorno'] }, weekdayRecords, {
+        from_dttm: '2026-10-01T00:00:00',
+        to_dttm: '2026-11-01T00:00:00',
+      });
+      expect(props.columns.find(c => c.key === 'visite___Lunedì___comp')?.title).toBe(
+        'visite (ott 2025)',
+      );
+    });
+
+    it('follows the filter: another month gives another title', () => {
+      const props = run({ columns: ['giorno'] }, weekdayRecords, {
+        from_dttm: '2026-03-01T00:00:00',
+        to_dttm: '2026-04-01T00:00:00',
+      });
+      expect(props.columns.find(c => c.key === 'visite___Lunedì___comp')?.title).toBe(
+        'visite (mar 2025)',
+      );
     });
   });
 });

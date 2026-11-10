@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.1] - 2026-11-10
+
+### Added
+- **Dynamic title of the comparison columns.** The control `calendar_comparison_label` is now a template: `{periodo}` becomes the comparison period in month and year (`ott 2025`, `lug 2025 – set 2025`, `2025` for a whole year), `{corrente}` the current period and `{offset}` the offset (`1 anno fa`). The period is the time range of the query moved back by the offset of the calendar filter, so the title follows the filter. The default is `{periodo}`; a chart that saved a fixed text keeps it. Without a range the title falls back to the offset and then to `Confronto`.
+
 ## [0.16.0] - 2026-11-10
 
 ### Added

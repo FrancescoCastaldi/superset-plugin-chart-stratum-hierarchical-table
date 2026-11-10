@@ -356,7 +356,7 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
       typeof mergedFormData.calendar_comparison_label === 'string' &&
       mergedFormData.calendar_comparison_label.trim() !== ''
         ? mergedFormData.calendar_comparison_label.trim()
-        : 'Confronto',
+        : '{periodo}',
     showVarianceBadges: showVarianceBadges !== false,
     resizableColumns: Boolean(resizableColumns),
     wrapHeaderLabels: Boolean(wrapHeaderLabels),

@@ -112,6 +112,91 @@ export function comparisonOffsetLabel(offset: unknown): string | null {
   return raw;
 }
 
+const toUtcDate = (value: unknown): Date | null => {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'number') return new Date(value);
+  const date = parsePeriodKey(value) ?? new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+/** The date moved back by a Superset offset (`1 year ago`); null for an offset it cannot read. */
+function shiftBack(date: Date, offset: string): Date | null {
+  const match = /^(\d+)\s+(year|quarter|month|week|day)s?\s+ago$/i.exec(offset.trim());
+  if (!match) return null;
+  const amount = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  const shifted = new Date(date.getTime());
+  if (unit === 'year') shifted.setUTCFullYear(shifted.getUTCFullYear() - amount);
+  else if (unit === 'quarter') shifted.setUTCMonth(shifted.getUTCMonth() - 3 * amount);
+  else if (unit === 'month') shifted.setUTCMonth(shifted.getUTCMonth() - amount);
+  else shifted.setUTCDate(shifted.getUTCDate() - (unit === 'week' ? 7 : 1) * amount);
+  return shifted;
+}
+
+/** Month and year of a range, `ott 2025`, `ott 2025 – dic 2025`, or the year of a whole year. */
+function monthRangeLabel(start: Date, end: Date): string {
+  const label = (date: Date) => `${MONTHS_IT[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+  const wholeYear =
+    start.getUTCMonth() === 0 &&
+    end.getUTCMonth() === 11 &&
+    start.getUTCFullYear() === end.getUTCFullYear();
+  if (wholeYear) return String(start.getUTCFullYear());
+  const first = label(start);
+  const last = label(end);
+  return first === last ? first : `${first} – ${last}`;
+}
+
+/**
+ * Period of the comparison (T2) as month and year: the time range of the query moved back by the
+ * offset of the calendar filter. The end of the range is exclusive in Superset, so it is read one
+ * millisecond earlier. Null when the range or the offset is unknown.
+ */
+export function comparisonPeriodLabel(
+  timeRange: { from?: unknown; to?: unknown } | null | undefined,
+  offset: unknown,
+): string | null {
+  const from = toUtcDate(timeRange?.from);
+  const to = toUtcDate(timeRange?.to);
+  if (!from || !offset) return null;
+  const raw = String(offset).trim();
+  let start: Date | null;
+  let end: Date | null;
+  if (raw.toLowerCase() === 'inherited') {
+    // The same span, immediately before the current one.
+    if (!to) return null;
+    const span = to.getTime() - from.getTime();
+    start = new Date(from.getTime() - span);
+    end = new Date(from.getTime() - 1);
+  } else {
+    start = shiftBack(from, raw);
+    const shiftedTo = to ? shiftBack(to, raw) : null;
+    end = shiftedTo ? new Date(shiftedTo.getTime() - 1) : start;
+  }
+  return start && end ? monthRangeLabel(start, end) : null;
+}
+
+/**
+ * Text of the comparison columns from the template of the control. `{periodo}` is the comparison
+ * period (`ott 2025`), `{corrente}` the current one and `{offset}` the offset (`1 anno fa`).
+ * An empty template is `{periodo}`; a token that cannot be known falls back to the offset and,
+ * without it, to `Confronto`.
+ */
+export function resolveComparisonLabel(
+  template: string,
+  scope: { timeRange?: { from?: unknown; to?: unknown } | null; offset?: unknown },
+): string {
+  const offsetText = comparisonOffsetLabel(scope.offset);
+  const from = toUtcDate(scope.timeRange?.from);
+  const to = toUtcDate(scope.timeRange?.to);
+  const current = from ? monthRangeLabel(from, to ? new Date(to.getTime() - 1) : from) : null;
+  const comparison = comparisonPeriodLabel(scope.timeRange, scope.offset);
+  const text = (template.trim() || '{periodo}')
+    .replace(/\{periodo\}/g, comparison ?? offsetText ?? 'Confronto')
+    .replace(/\{corrente\}/g, current ?? 'corrente')
+    .replace(/\{offset\}/g, offsetText ?? 'periodo di confronto');
+  return text;
+}
+
 export interface PeriodScope {
   /** What the reference columns cover. */
   reference: string | null;
