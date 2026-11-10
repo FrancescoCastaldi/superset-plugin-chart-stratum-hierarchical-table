@@ -487,6 +487,9 @@ export function computePivotTimeDelta(
  */
 export const NATIVE_COMPARISON_SUFFIX = '___native_cmp';
 
+/** Suffix of the comparison value (T2) of a cell: `totale___Lunedì___comp`. */
+export const COMPARISON_SUFFIX = '___comp';
+
 /**
  * Valore dell'offset nativo di una metrica in un record (`Tot__1 year ago`).
  * `undefined` se il record non ha la colonna di confronto, `null` se la colonna c'è ma è vuota.

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-11-10
+
+### Added
+- **Paired calendar comparison** (`calendar_comparison_mode` = `paired`, the new default): when the dashboard's calendar filter sends a comparison period (T2), every value cell gets the same cell computed on T2 next to it, followed by its deltas. It works on every metric and on every layout: flat tables, one pivot column (Monday 2026 next to Monday 2025, per row, per pivot value) and two pivot columns (every combination, the subtotal of the first pivot value and the row totals). The comparison of a row is the Superset offset of the metric on the same row and the same pivot values, rolled up to the parent rows and the grand total like the current values; a pivot value with no current value still counts in the comparison.
+- **Delta formats** (`calendar_comparison_formats`): absolute (Δ), percentage (Δ%, `Nuovo` when the comparison is zero), percentage points (Δ pp) and ratio (Δ×, neutral at 1). Any combination, shown in a fixed order; none shows only the two values. The deltas are green when the metric improves and red when it worsens, and the polarity of the metric definition (lower is better) swaps the colours.
+- `calendar_comparison_label`: the word in the title of the comparison columns (default `Confronto`).
+
+### Changed
+- The calendar filter comparison control is no longer limited to single pivot tables. The previous behaviour, one Δ of the row total for single pivot tables, is the `row_total` mode.
+- Flat tables with a comparison period keep value, comparison, Δ and Δ% unless the formats are chosen; their Δ% is now `Nuovo` (not 0) when the comparison is zero and the value is positive.
+
 ## [0.15.1] - 2026-11-09
 
 ### Fixed

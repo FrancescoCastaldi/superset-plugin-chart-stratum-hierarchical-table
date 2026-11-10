@@ -9,6 +9,7 @@ import { createClearFilterHandler, createCrossFilterHandler } from './eventHandl
 import { TransformOptions, resolveTransformOptions } from './formDataOptions';
 import { buildGrandTotalNode } from './grandTotal';
 import { buildMetricLayout, resolveTimeDeltaStrategy } from './metricLayout';
+import { writePairedDeltas } from './pairedComparison';
 import { buildTreeData } from './treeData';
 import { applyConfidenceIntervals } from '../utils/significance';
 import { applySuppression } from '../utils/suppression';
@@ -121,6 +122,10 @@ export default function transformProps(
     showVarianceDelta: options.showVarianceDelta,
     showCalendarComparison: options.showCalendarComparison,
   });
+  // The deltas of the paired comparison on the grand total, from its own current and comparison values.
+  if (grandTotalNode && layout.pairedKeys && layout.pairedFormats) {
+    writePairedDeltas([grandTotalNode], layout.pairedKeys, layout.pairedFormats);
+  }
   // Again with the grand total and the row totals, which only exist after the layout.
   applyMetricDefinitions(treeData, grandTotalNode, options.metricDefinitions, options.dimensions);
   applyTableCalculations(treeData, grandTotalNode, options.tableCalculations);

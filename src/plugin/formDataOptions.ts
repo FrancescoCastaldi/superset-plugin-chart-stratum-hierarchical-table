@@ -1,5 +1,10 @@
 import { ensureIsArray } from '@superset-ui/core';
 import {
+  CalendarComparisonMode,
+  ComparisonFormat,
+  resolveComparisonFormats,
+} from './pairedComparison';
+import {
   DimensionColumn,
   AggregationFunction,
   ComparisonReferencePeriod,
@@ -66,6 +71,12 @@ export interface TransformOptions {
   showVarianceDelta: boolean;
   /** Delta against the comparison period (T2) sent by the dashboard's calendar filter */
   showCalendarComparison: boolean;
+  /** Calendar comparison shown as a pair of cells per value (paired) or as a Δ of the row total */
+  calendarComparisonMode: CalendarComparisonMode;
+  /** Deltas shown next to the comparison value; null when the chart never chose them */
+  comparisonFormats: ComparisonFormat[] | null;
+  /** Word in the title of the comparison columns, e.g. `Confronto` */
+  comparisonLabel: string;
   showVarianceBadges: boolean;
   resizableColumns: boolean;
   wrapHeaderLabels: boolean;
@@ -336,6 +347,16 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     showVarianceDelta,
     showCalendarComparison:
       mergedFormData.show_calendar_comparison !== false && mergedFormData.showCalendarComparison !== false,
+    calendarComparisonMode:
+      mergedFormData.calendar_comparison_mode === 'row_total' ? 'row_total' : 'paired',
+    comparisonFormats: Array.isArray(mergedFormData.calendar_comparison_formats)
+      ? resolveComparisonFormats(mergedFormData.calendar_comparison_formats, [])
+      : null,
+    comparisonLabel:
+      typeof mergedFormData.calendar_comparison_label === 'string' &&
+      mergedFormData.calendar_comparison_label.trim() !== ''
+        ? mergedFormData.calendar_comparison_label.trim()
+        : 'Confronto',
     showVarianceBadges: showVarianceBadges !== false,
     resizableColumns: Boolean(resizableColumns),
     wrapHeaderLabels: Boolean(wrapHeaderLabels),

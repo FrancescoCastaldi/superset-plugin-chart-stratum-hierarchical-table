@@ -20,6 +20,12 @@ import {
 } from './columnBuilders';
 import { TransformOptions } from './formDataOptions';
 import {
+  DEFAULT_PIVOT_FORMATS,
+  LEGACY_FLAT_FORMATS,
+  insertPairedColumns,
+  writeRowTotalComparison,
+} from './pairedComparison';
+import {
   chronologicalOrder,
   collectDistinctPivotKeys,
   collectDistinctValues,
@@ -63,9 +69,16 @@ export function buildMetricLayout(
 ): ColumnLayout {
   const format = { numberFormat: options.numberFormat, currencySymbol: options.currencySymbol };
   const { pivotDimensions, pivotRowTotalsPosition, pivotTimeDeltaMode } = options;
+  const paired = options.showCalendarComparison && options.calendarComparisonMode === 'paired';
 
   if (!options.isPivotMode) {
-    const flatLayout = buildFlatColumns(metrics, format, records, treeData);
+    const flatLayout = buildFlatColumns(
+      metrics,
+      format,
+      records,
+      treeData,
+      options.comparisonFormats ?? LEGACY_FLAT_FORMATS,
+    );
     appendTableCalculationColumns(flatLayout, options.tableCalculations, format, false);
     return flatLayout;
   }
@@ -91,6 +104,15 @@ export function buildMetricLayout(
       columnSubtotalLabel: options.pivotColumnSubtotalLabel,
       format,
     });
+    if (paired) {
+      insertPairedColumns(
+        twoWayLayout,
+        treeData,
+        options.comparisonFormats ?? DEFAULT_PIVOT_FORMATS,
+        options.comparisonLabel,
+        format,
+      );
+    }
     appendTableCalculationColumns(twoWayLayout, options.tableCalculations, format, true);
     return twoWayLayout;
   }
@@ -136,30 +158,49 @@ export function buildMetricLayout(
   });
 
   const timeDeltaStrategy = resolveTimeDeltaStrategy(options);
+  // Paired mode: every cell gets the comparison period next to it, with its deltas.
+  let pairedCells = 0;
+  if (paired) {
+    if (pivotRowTotalsPosition !== 'none') {
+      writeRowTotalComparison(treeData, metrics, chronologicalPivotValues);
+    }
+    pairedCells = insertPairedColumns(
+      layout,
+      treeData,
+      options.comparisonFormats ?? DEFAULT_PIVOT_FORMATS,
+      options.comparisonLabel,
+      format,
+    ).length;
+  }
   // The calendar filter's comparison period (T2), when the dashboard sends one, takes precedence
-  // over the delta between pivot values.
-  if (options.showCalendarComparison && computeNativeTimeDelta(treeData, metrics, chronologicalPivotValues)) {
-    appendPeriodComparisonColumns(
-      layout,
-      metrics,
-      { strategy: 'prev_period', referencePeriod: 'previous', timeGrain: 'auto', goals: [] },
-      format,
-      CALENDAR_COMPARISON_TITLE,
-    );
-  } else if (
-    timeDeltaStrategy &&
-    computeTreeTimeDeltaByStrategy(treeData, metrics, chronologicalPivotValues, timeDeltaStrategy)
-  ) {
-    const effectiveTimeGrain =
-      timeDeltaStrategy.timeGrain === 'auto'
-        ? detectNaturalGrain(chronologicalPivotValues)
-        : timeDeltaStrategy.timeGrain;
-    appendPeriodComparisonColumns(
-      layout,
-      metrics,
-      { ...timeDeltaStrategy, timeGrain: effectiveTimeGrain },
-      format,
-    );
+  // over the delta between pivot values. The paired columns already carry it in every cell.
+  if (pairedCells === 0) {
+    if (
+      options.showCalendarComparison &&
+      computeNativeTimeDelta(treeData, metrics, chronologicalPivotValues)
+    ) {
+      appendPeriodComparisonColumns(
+        layout,
+        metrics,
+        { strategy: 'prev_period', referencePeriod: 'previous', timeGrain: 'auto', goals: [] },
+        format,
+        CALENDAR_COMPARISON_TITLE,
+      );
+    } else if (
+      timeDeltaStrategy &&
+      computeTreeTimeDeltaByStrategy(treeData, metrics, chronologicalPivotValues, timeDeltaStrategy)
+    ) {
+      const effectiveTimeGrain =
+        timeDeltaStrategy.timeGrain === 'auto'
+          ? detectNaturalGrain(chronologicalPivotValues)
+          : timeDeltaStrategy.timeGrain;
+      appendPeriodComparisonColumns(
+        layout,
+        metrics,
+        { ...timeDeltaStrategy, timeGrain: effectiveTimeGrain },
+        format,
+      );
+    }
   }
 
   if (options.showSparklines) {

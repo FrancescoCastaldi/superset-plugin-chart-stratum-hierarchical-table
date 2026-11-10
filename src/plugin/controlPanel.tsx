@@ -288,13 +288,75 @@ const config: ControlPanelConfig = {
               type: 'CheckboxControl',
               label: t('Confronto con il periodo di confronto del filtro Calendar'),
               description: t(
-                'Il filtro Calendar della dashboard può avere un periodo corrente (T1) e un periodo di confronto (T2). Con questa opzione attiva, ogni riga mostra la variazione del totale del periodo corrente rispetto al totale del periodo di confronto, nelle colonne Δ e Δ%. Richiede una tabella pivot con una sola colonna pivot. Senza un periodo di confronto nel filtro non compare alcuna colonna di confronto.',
+                'Il filtro Calendar della dashboard può avere un periodo corrente (T1) e un periodo di confronto (T2). Con questa opzione attiva, la tabella mostra il periodo di confronto accanto al periodo corrente, per ogni metrica. Senza un periodo di confronto nel filtro non compare alcuna colonna di confronto.',
               ),
               default: true,
               renderTrigger: true,
               visibility: ({ controls }: { controls: any }) =>
+                controls?.hierarchyType?.value === 'multi_dimension',
+            },
+          },
+        ],
+        [
+          {
+            name: 'calendar_comparison_mode',
+            config: {
+              type: 'SelectControl',
+              label: t('Come mostrare il confronto del filtro Calendar'),
+              default: 'paired',
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                ['paired', t('Coppia per ogni cella (corrente | confronto | Δ)')],
+                ['row_total', t('Solo Δ del totale di riga (tabella pivot con una colonna)')],
+              ],
+              description: t(
+                'Coppia: accanto a ogni valore compare lo stesso valore nel periodo di confronto e la variazione, per ogni valore pivot (es. lunedì 2026 e lunedì 2025). Vale per tabelle piatte, con una colonna pivot e con due. Totale di riga: una sola variazione per riga, tra il totale corrente e il totale di confronto.',
+              ),
+              visibility: ({ controls }: { controls: any }) =>
                 controls?.hierarchyType?.value === 'multi_dimension' &&
-                Boolean(controls?.columns?.value && controls.columns.value.length === 1),
+                controls?.show_calendar_comparison?.value !== false,
+            },
+          },
+        ],
+        [
+          {
+            name: 'calendar_comparison_formats',
+            config: {
+              type: 'SelectControl',
+              multi: true,
+              label: t('Variazioni da mostrare nel confronto'),
+              default: ['pct'],
+              renderTrigger: true,
+              choices: [
+                ['abs', t('Δ assoluto (corrente - confronto)')],
+                ['pct', t('Δ % ((corrente - confronto) / confronto)')],
+                ['pp', t('Punti percentuali (per metriche già in %)')],
+                ['ratio', t('Rapporto (corrente / confronto, es. 1,12×)')],
+              ],
+              description: t(
+                'Le variazioni sono colorate di verde se migliorano e di rosso se peggiorano. Per le metriche in cui un valore più basso è meglio, imposta la polarità nelle definizioni delle metriche. Lasciando vuoto si vedono solo i due valori.',
+              ),
+              visibility: ({ controls }: { controls: any }) =>
+                controls?.hierarchyType?.value === 'multi_dimension' &&
+                controls?.show_calendar_comparison?.value !== false &&
+                controls?.calendar_comparison_mode?.value !== 'row_total',
+            },
+          },
+        ],
+        [
+          {
+            name: 'calendar_comparison_label',
+            config: {
+              type: 'TextControl',
+              label: t('Nome della colonna di confronto'),
+              default: 'Confronto',
+              renderTrigger: true,
+              description: t('Testo tra parentesi nel titolo delle colonne del periodo di confronto, es. Confronto o Anno prec.'),
+              visibility: ({ controls }: { controls: any }) =>
+                controls?.hierarchyType?.value === 'multi_dimension' &&
+                controls?.show_calendar_comparison?.value !== false &&
+                controls?.calendar_comparison_mode?.value !== 'row_total',
             },
           },
         ],

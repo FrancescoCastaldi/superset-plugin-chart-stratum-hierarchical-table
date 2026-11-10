@@ -8,7 +8,34 @@ import {
   recomputeDerivedMetrics,
 } from './aggregations';
 import { toDimensionValue } from './dimensionValue';
-import { NATIVE_COMPARISON_SUFFIX, nativeOffsetValue } from './timeComparison';
+import { COMPARISON_SUFFIX, NATIVE_COMPARISON_SUFFIX, nativeOffsetValue } from './timeComparison';
+
+/** Cells of a two-way pivot that a record fills: the pair of pivot values, its subtotal and the row totals. */
+function twoWayCellKeys(metric: string, pivot1: string, pivot2: string): string[] {
+  return [
+    `${metric}___${pivot1}___${pivot2}`,
+    `${metric}___${pivot1}___SUBTOTAL`,
+    `${metric}___ROW_TOTAL___${pivot2}`,
+    `${metric}___ROW_TOTAL`,
+  ];
+}
+
+/**
+ * Adds the comparison period (T2) value of a metric to every cell that the record fills: the
+ * cell of its pivot values and, in a two-way pivot, the subtotal and row total cells.
+ * Cells of one row that several records fill get the sum, like the current values.
+ */
+function addComparison(
+  target: Record<string, number | string | null>,
+  cellKeys: string[],
+  offset: number | null,
+): void {
+  for (const key of cellKeys) {
+    const comparisonKey = `${key}${COMPARISON_SUFFIX}`;
+    const previous = target[comparisonKey];
+    target[comparisonKey] = (typeof previous === 'number' ? previous : 0) + (offset ?? 0);
+  }
+}
 
 /**
  * Builds a hierarchical tree from flat records using an ordered list of dimensions.
@@ -97,12 +124,17 @@ export function buildMultiDimensionTree(
                 nodeObj.metrics[`${m}___ROW_TOTAL___${pVal2}`] = numVal;
                 nodeObj.metrics[`${m}___ROW_TOTAL`] = numVal;
                 nodeObj.metrics[`${m}___${pivotKey}`] = numVal;
+                const pairOffset = nativeOffsetValue(record, m);
+                if (pairOffset !== undefined) {
+                  addComparison(nodeObj.metrics, twoWayCellKeys(m, pVal1, pVal2), pairOffset);
+                }
               } else if (pivotKey) {
                 const compositeMetricKey = `${m}___${pivotKey}`;
                 nodeObj.metrics[compositeMetricKey] = numVal;
                 const offset = nativeOffsetValue(record, m);
                 if (offset !== undefined) {
                   nodeObj.metrics[`${m}${NATIVE_COMPARISON_SUFFIX}`] = offset ?? 0;
+                  addComparison(nodeObj.metrics, [compositeMetricKey], offset);
                 }
               }
             } else {
@@ -140,6 +172,14 @@ export function buildMultiDimensionTree(
           // The native baseline is the comparison of every pivot value, also of those whose current
           // value is empty: skipping them would understate the comparison period of the row.
           const offset = isPivot && pivotKey && !isMultiPivot ? nativeOffsetValue(record, m) : undefined;
+          if (isMultiPivot) {
+            const pairOffset = nativeOffsetValue(record, m);
+            if (pairOffset !== undefined) {
+              addComparison(existingNode.metrics, twoWayCellKeys(m, pVal1, pVal2), pairOffset);
+            }
+          } else if (offset !== undefined) {
+            addComparison(existingNode.metrics, [`${m}___${pivotKey}`], offset);
+          }
           if (offset !== undefined) {
             const baselineKey = `${m}${NATIVE_COMPARISON_SUFFIX}`;
             const previous = existingNode.metrics[baselineKey];

@@ -17,6 +17,12 @@ import {
   getCalculationFormatter,
 } from '../utils/tableCalculations';
 import {
+  ComparisonFormat,
+  LEGACY_FLAT_FORMATS,
+  buildDeltaColumns,
+  writePairedDeltas,
+} from './pairedComparison';
+import {
   PERIOD_DELTA_PCT_SUFFIX,
   PERIOD_DELTA_SUFFIX,
   TimeDeltaStrategyConfig,
@@ -40,6 +46,9 @@ export interface ColumnLayout {
   columns: TableColumn[];
   pivotHeaderGroups: PivotHeaderGroup[];
   metricKeys: string[];
+  /** Cells that carry a comparison column and deltas, whose deltas the grand total needs too. */
+  pairedKeys?: string[];
+  pairedFormats?: ComparisonFormat[];
 }
 
 /**
@@ -129,9 +138,16 @@ function rowTotalsHeaderGroup(
 /**
  * Non-pivot layout: one column per metric. Comparison operands are still aggregated.
  */
-export function buildFlatColumns(metrics: string[], format: ValueFormat, records?: any[], treeData?: any[]): ColumnLayout {
+export function buildFlatColumns(
+  metrics: string[],
+  format: ValueFormat,
+  records?: any[],
+  treeData?: any[],
+  comparisonFormats: ComparisonFormat[] = LEGACY_FLAT_FORMATS,
+): ColumnLayout {
   const columns: TableColumn[] = [];
   const metricKeys: string[] = [];
+  const pairedKeys: string[] = [];
   const hasComp = Boolean(records && records.length > 0 && Object.keys(records[0]).some(k => k.includes('__')));
   const compMap: Record<string, string> = {};
 
@@ -192,8 +208,7 @@ export function buildFlatColumns(metrics: string[], format: ValueFormat, records
     }
 
     if (hasComp && compMap[m]) {
-      metricKeys.push(m, `${m}___comp`, `${m}___diff`, `${m}___delta`);
-      columns.push({
+      const current: TableColumn = {
         key: m,
         title: `${m} (Attuale)`,
         dataIndex: m,
@@ -201,8 +216,12 @@ export function buildFlatColumns(metrics: string[], format: ValueFormat, records
         align: 'right',
         width: 135,
         formatter: createMetricFormatter(format, m),
-      });
-      columns.push({
+      };
+      // Titles of the deltas read `Δ metric`, not `Δ metric (Attuale)`.
+      const deltas = buildDeltaColumns({ ...current, title: m }, comparisonFormats, format);
+      metricKeys.push(m, `${m}___comp`, ...deltas.map(column => column.key));
+      pairedKeys.push(m);
+      columns.push(current, {
         key: `${m}___comp`,
         title: `${m} (Comparison)`,
         dataIndex: `${m}___comp`,
@@ -210,25 +229,7 @@ export function buildFlatColumns(metrics: string[], format: ValueFormat, records
         align: 'right',
         width: 135,
         formatter: createMetricFormatter(format, m),
-      });
-      columns.push({
-        key: `${m}___diff`,
-        title: `Δ ${m}`,
-        dataIndex: `${m}___diff`,
-        isMetric: true,
-        align: 'right',
-        width: 115,
-        formatter: createMetricFormatter(format, m),
-      });
-      columns.push({
-        key: `${m}___delta`,
-        title: `Δ% ${m}`,
-        dataIndex: `${m}___delta`,
-        isMetric: true,
-        align: 'right',
-        width: 105,
-        formatter: createMetricFormatter(format, `${m}___delta`),
-      });
+      }, ...deltas);
     } else {
       metricKeys.push(m);
       const isDelta = m.includes('delta') || m.includes('diff') || m.endsWith('___delta');
@@ -247,7 +248,17 @@ export function buildFlatColumns(metrics: string[], format: ValueFormat, records
     }
   }
 
-  return { columns, pivotHeaderGroups: [], metricKeys };
+  // The deltas of the selected formats, with the same rules as the pivot layouts.
+  if (treeData && pairedKeys.length > 0) {
+    writePairedDeltas(treeData, pairedKeys, comparisonFormats);
+  }
+
+  return {
+    columns,
+    pivotHeaderGroups: [],
+    metricKeys,
+    ...(pairedKeys.length > 0 ? { pairedKeys, pairedFormats: comparisonFormats } : {}),
+  };
 }
 
 export interface MultiPivotColumnsParams {

@@ -379,6 +379,8 @@ export interface TableColumn {
   formatter?: (val: any) => any;
   /** Direction of improvement of the metric of the column, from its definition. */
   polarity?: MetricPolarity;
+  /** Value of a delta column that means "no change" (0 by default, 1 for a ratio column). */
+  deltaBaseline?: number;
   /** Trend column: the cell draws the series of `metric` over `periods` instead of a value. */
   sparkline?: { metric: string; periods: string[] };
   /** Type of table calculation if this column represents a measure modifier. */

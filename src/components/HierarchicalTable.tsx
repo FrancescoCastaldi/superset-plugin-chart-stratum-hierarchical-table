@@ -300,7 +300,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
         ) : isDelta && typeof val === 'number' ? (
           col?.key?.endsWith('___delta') ? (
             <span
-              className={classNames('delta-badge', deltaClassName(val, col?.polarity))}
+              className={classNames('delta-badge', deltaClassName(val - (col?.deltaBaseline ?? 0), col?.polarity))}
               title={`Delta %: ${val > 0 ? '+' : ''}${val.toFixed(1)}%`}
             >
               {val > 0 ? '▲ +' : val < 0 ? '▼ ' : ''}
@@ -308,7 +308,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
             </span>
           ) : (
             <span
-              className={deltaClassName(val, col?.polarity)}
+              className={deltaClassName(val - (col?.deltaBaseline ?? 0), col?.polarity)}
             >
               {col?.formatter ? col.formatter(val) : String(val ?? '-')}
             </span>
@@ -1247,7 +1247,7 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
             ) : isDelta && typeof val === 'number' ? (
               col?.key?.endsWith('___delta') ? (
                 <span
-                  className={classNames('delta-badge', deltaClassName(val, col?.polarity))}
+                  className={classNames('delta-badge', deltaClassName(val - (col?.deltaBaseline ?? 0), col?.polarity))}
                   title={`Total delta %: ${val > 0 ? '+' : ''}${val.toFixed(1)}%`}
                 >
                   {val > 0 ? '▲ +' : val < 0 ? '▼ ' : ''}
@@ -1255,7 +1255,7 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
                 </span>
               ) : (
                 <span
-                  className={deltaClassName(val, col?.polarity)}
+                  className={deltaClassName(val - (col?.deltaBaseline ?? 0), col?.polarity)}
                 >
                   {col?.formatter ? col.formatter(val) : String(val ?? '-')}
                 </span>
