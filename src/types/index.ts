@@ -239,6 +239,11 @@ export interface HierarchicalTableFormData extends QueryFormData {
   // Formatting & Aesthetics
   numberFormat?: string;
   currencySymbol?: string;
+  // Time and duration metrics
+  timeDetection?: 'auto' | 'off';
+  timeDisplayFormat?: 'auto' | 'hms' | 'ms' | 'minutes' | 'hours' | 'seconds';
+  timeFractionDigits?: number | string;
+  timeRollup?: 'mean' | 'general';
   conditionalFormatting?: ConditionalFormattingRule[];
   stripedRows?: boolean;
   compactMode?: boolean;
@@ -377,6 +382,8 @@ export interface TableColumn {
   pivotValue?: string;
   baseMetric?: string;
   formatter?: (val: any) => any;
+  /** The CSV export writes the formatted text (a duration) instead of the raw number (seconds). */
+  exportFormatted?: boolean;
   /** Direction of improvement of the metric of the column, from its definition. */
   polarity?: MetricPolarity;
   /** Value of a delta column that means "no change" (0 by default, 1 for a ratio column). */

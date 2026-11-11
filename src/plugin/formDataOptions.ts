@@ -108,6 +108,12 @@ export interface TransformOptions {
   conditionalFormatting: ConditionalFormattingRule[];
   /** Weight metric of the weighted_avg roll-up; empty for every other aggregation mode. */
   weightColumn: string;
+  /** Metrics of type Time: read as durations (`auto`) or left as text (`off`) */
+  timeDetection: 'auto' | 'off';
+  timeDisplayFormat: 'auto' | 'hms' | 'ms' | 'minutes' | 'hours' | 'seconds';
+  timeFractionDigits: number;
+  /** Parents, totals and row totals of Time metrics: their average (`mean`) or the table's roll-up (`general`) */
+  timeRollup: 'mean' | 'general';
   theme: ResolvedTheme;
   enableWhatIf: boolean;
 }
@@ -438,6 +444,18 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
       mergedFormData.aggregationMode === 'weighted_avg'
         ? String(mergedFormData.weightColumn ?? '').trim()
         : '',
+    timeDetection: pickChoice(['auto', 'off'] as const, 'auto', mergedFormData.timeDetection, mergedFormData.time_detection),
+    timeDisplayFormat: pickChoice(
+      ['auto', 'hms', 'ms', 'minutes', 'hours', 'seconds'] as const,
+      'auto',
+      mergedFormData.timeDisplayFormat,
+      mergedFormData.time_display_format,
+    ),
+    timeFractionDigits: Math.min(
+      3,
+      Math.max(0, Math.round(Number(mergedFormData.timeFractionDigits ?? mergedFormData.time_fraction_digits ?? 0)) || 0),
+    ),
+    timeRollup: pickChoice(['mean', 'general'] as const, 'mean', mergedFormData.timeRollup, mergedFormData.time_rollup),
     theme: getTheme(
       mergedFormData.themeProfile ??
         mergedFormData.theme_profile ??

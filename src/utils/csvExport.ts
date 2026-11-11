@@ -21,11 +21,14 @@ export interface CsvExportParams {
   whatIfBaseline?: WhatIfBaseline;
 }
 
-function cellValue(node: TreeNode, key: string): string {
+function cellValue(node: TreeNode, key: string, column?: TableColumn): string {
   const suppressed = node.suppressed?.[key];
   if (suppressed !== undefined) return suppressed;
   const val = node.metrics?.[key] ?? node.subtotals?.[key];
-  return val !== null && val !== undefined ? String(val) : '';
+  if (val === null || val === undefined) return '';
+  // Durations are exported as written in the table (12:54), not as a number of seconds
+  if (column?.exportFormatted && column.formatter && typeof val === 'number') return String(column.formatter(val));
+  return String(val);
 }
 
 /**
@@ -72,7 +75,7 @@ export function buildCsvRows({
         : new Array(displayCols.length).fill('');
     }
     if (!hasWhatIf) {
-      return displayCols.map(c => cellValue(node, c.key));
+      return displayCols.map(c => cellValue(node, c.key, c));
     }
     const result: string[] = [];
     for (const c of displayCols) {

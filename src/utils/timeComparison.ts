@@ -7,6 +7,8 @@ import {
   PivotTimeDeltaMode,
 } from '../types';
 
+import { isTimeMetricName } from './timeMetricRegistry';
+
 export const PERIOD_DELTA_SUFFIX = '___period_delta';
 export const PERIOD_DELTA_PCT_SUFFIX = '___period_delta_pct';
 
@@ -533,11 +535,29 @@ export function computeNativeTimeDelta(
       let delta: number | null = null;
       let deltaPct: number | null = null;
       if (rawBaseline !== undefined) {
-        const current = pivotValues.reduce<number | null>((sum, pv) => {
+        let count = 0;
+        let current = pivotValues.reduce<number | null>((sum, pv) => {
           const value = toFiniteNumber(node.metrics?.[`${m}___${pv}`]);
+          if (value !== null) count += 1;
           return value === null ? sum : (sum ?? 0) + value;
         }, null);
-        ({ delta, deltaPct } = toComparison(current, toFiniteNumber(rawBaseline)));
+        let baseline = toFiniteNumber(rawBaseline);
+        if (isTimeMetricName(m)) {
+          // Times are averaged over the pivot values, current and comparison alike (the baseline of the
+          // row is a sum of the comparison cells, which means nothing for a duration)
+          if (current !== null && count > 0) current /= count;
+          let compSum = 0;
+          let compCount = 0;
+          for (const pv of pivotValues) {
+            const cell = toFiniteNumber(node.metrics?.[`${m}___${pv}${COMPARISON_SUFFIX}`]);
+            if (cell !== null) {
+              compSum += cell;
+              compCount += 1;
+            }
+          }
+          if (compCount > 0) baseline = compSum / compCount;
+        }
+        ({ delta, deltaPct } = toComparison(current, baseline));
       }
       node.metrics[`${m}${PERIOD_DELTA_SUFFIX}`] = delta;
       node.metrics[`${m}${PERIOD_DELTA_PCT_SUFFIX}`] = deltaPct;

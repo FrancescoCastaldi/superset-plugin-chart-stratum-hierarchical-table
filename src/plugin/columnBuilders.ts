@@ -12,6 +12,7 @@ import {
   firstByPriority,
 } from '../utils/conditionalFormatting';
 import { formatMetricValue } from '../utils/formatters';
+import { isTimeMetricName } from '../utils/timeMetricRegistry';
 import {
   defaultCalculationTitle,
   getCalculationFormatter,
@@ -183,6 +184,11 @@ export function buildFlatColumns(
               for (const c of node.children) {
                 curSum += Number((c.metrics && c.metrics[m]) || 0);
                 compSum += Number((c.metrics && c.metrics[m + '___comp']) || 0);
+              }
+              // Times are averaged, not added
+              if (isTimeMetricName(m) && node.children.length > 0) {
+                curSum /= node.children.length;
+                compSum /= node.children.length;
               }
               node.metrics[m] = curSum;
               node.metrics[m + '___comp'] = compSum;

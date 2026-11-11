@@ -24,6 +24,8 @@ Plugin di visualizzazione tabellare gerarchica per Apache Superset (chiave `hier
 | `src/plugin/grandTotal.ts` | Riga del totale generale e relative variazioni |
 | `src/utils/treeBuilder.ts` | Albero da record; salva anche il valore del periodo di confronto di ogni cella (`___comp`) |
 | `src/utils/timeComparison.ts` | Variazioni tra periodi, offset nativi di Superset (`metrica__1 year ago`), `COMPARISON_SUFFIX` |
+| `src/utils/timeValues.ts` | Metriche Time: lettura di `HH:MM:SS.ffffff` e ISO 8601 in secondi, formati di visualizzazione, ruolo (valore, differenza, percentuale) di una colonna |
+| `src/utils/timeMetricRegistry.ts` | Nomi delle metriche che contengono durate, letto da roll-up, totali di riga e confronto per fare la media invece della somma |
 | `src/utils/aggregations.ts` | Rollup, metriche derivate, totali di riga del pivot |
 | `src/components/HierarchicalTable.tsx` | Rendering della tabella, badge Δ colorati per polarità |
 | `test/` | Suite Jest (53 file); `pairedComparison.test.ts` copre il confronto accoppiato su tre layout |

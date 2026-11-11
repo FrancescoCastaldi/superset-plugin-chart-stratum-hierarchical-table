@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.17.0] - 2026-11-11
+
+### Added
+- **Time and duration metrics.** A metric of type Time (SQL Server `time`, an average waiting time such as `00:12:54.425000`) arrives as text and the tree read it with `parseFloat`, which turned every cell into `0` without any error. The table now recognizes these metrics on its own, converts them to seconds before the tree is built and writes them as durations: cells, pivot cells, row totals, parent rows, grand total and the comparison period of the calendar filter.
+- **Differences of durations are durations.** The absolute delta of the paired comparison and of the period delta is written with its sign (`+05:00`, `-00:30`); percentage, percentage points and ratio stay numbers.
+- Accepted texts: `HH:MM:SS`, `H:MM:SS.ffffff`, more than 24 hours (`26:10:00`), `1 day, 2:03:04`, `0 days 00:12:54.425000` and ISO 8601 durations (`PT12M54S`). Two-part values such as `12:54` are not read (hours and minutes, or minutes and seconds).
+- Four controls in *Formatting & Aesthetics*: `timeDetection` (automatic or off), `timeDisplayFormat` (automatic `mm:ss` or `h:mm:ss`, hours minutes seconds, minutes and seconds, decimal minutes, decimal hours, seconds), `timeFractionDigits` (0 to 3) and `timeRollup` (average, or like the other metrics).
+- `test/timeMetrics.test.ts`: 18 tests on parsing, formats, roll-up, row totals, comparison and pivot.
+- **The Time controls show up on their own.** In Explore the controls of the durations appear only when a metric picked in the Data section looks like a Time field (a saved metric whose expression uses a TIME or INTERVAL column, a simple metric on such a column, a custom SQL naming one, or a name such as attesa, durata, tempo, lead time, wait, duration). Otherwise they stay hidden. It is only a hint for the panel: the data still decide at render time, so a chart is never changed by it.
+- `test/timeMetricHints.test.ts`: 9 tests.
+
+### Changed
+- **Parent rows, grand total and pivot row totals average the durations** instead of adding them (a sum of waiting times means nothing). The average uses the *Weight Metric* when the roll-up is Weighted Average, the plain average of the children otherwise; `timeRollup` = `general` brings back the table roll-up. The period delta of a pivot table with a native comparison averages current and comparison over the pivot values.
+- Only the metric columns (and the `<metric>__<offset>` columns of the comparison) are converted: a dimension that looks like a time, such as `08:00:00`, stays text. A metric whose definition sets its own `format` keeps it.
+- Conditional formatting rules and goals on a Time metric are written in seconds (`600` is `10:00`).
+
+### Known limits
+- Several records on the same leaf and the same pivot cell are still added together for every metric; for a Time metric that sum is not an average.
+- The average of the parents is the average of the averages of the children unless a weight metric is set: it is exact only with a weight (for example the number of requests).
+
 ## [0.16.1] - 2026-11-10
 
 ### Added

@@ -3,6 +3,7 @@ import {
   sharedControls,
   D3_FORMAT_OPTIONS,
 } from '@superset-ui/chart-controls';
+import { hasTimeMetric } from './timeMetricHints';
 import { isValidHex } from '../utils/themes';
 
 const t = (str: string) => str;
@@ -753,6 +754,88 @@ const config: ControlPanelConfig = {
               default: 'SMART_NUMBER',
               choices: CUSTOM_D3_FORMAT_OPTIONS || D3_FORMAT_OPTIONS,
               description: t('D3 format string for numerical metric values.'),
+            },
+          },
+        ],
+        [
+          {
+            name: 'timeDetection',
+            config: {
+              type: 'SelectControl',
+              label: t('Time and duration metrics'),
+              renderTrigger: true,
+              visibility: hasTimeMetric,
+              clearable: false,
+              default: 'auto',
+              choices: [
+                ['auto', t('Automatic (read Time metrics as durations)')],
+                ['off', t('Off (leave them as text)')],
+              ],
+              description: t(
+                'A metric of type Time (hh:mm:ss, for example an average waiting time) arrives as text. Automatic reads it as a number of seconds and shows cells, totals, comparison and differences as durations. Only metric columns are read, never the dimensions.',
+              ),
+            },
+          },
+        ],
+        [
+          {
+            name: 'timeDisplayFormat',
+            config: {
+              type: 'SelectControl',
+              label: t('Duration format'),
+              renderTrigger: true,
+              visibility: hasTimeMetric,
+              clearable: false,
+              default: 'auto',
+              choices: [
+                ['auto', t('Automatic (mm:ss, or h:mm:ss from one hour)')],
+                ['hms', t('Hours, minutes, seconds (1:05:30)')],
+                ['ms', t('Minutes and seconds (65:30)')],
+                ['minutes', t('Decimal minutes (65.5 min)')],
+                ['hours', t('Decimal hours (1.09 h)')],
+                ['seconds', t('Seconds (3930 s)')],
+              ],
+              description: t(
+                'How Time metrics are written. It does not change the number format above, which keeps applying to every other metric. Conditional formatting rules and goals on a Time metric are written in seconds.',
+              ),
+            },
+          },
+          {
+            name: 'timeFractionDigits',
+            config: {
+              type: 'SelectControl',
+              label: t('Duration decimals'),
+              renderTrigger: true,
+              visibility: hasTimeMetric,
+              clearable: false,
+              default: 0,
+              choices: [
+                [0, t('None')],
+                [1, t('One')],
+                [2, t('Two')],
+                [3, t('Three')],
+              ],
+              description: t('Digits after the comma in the seconds (clock formats) or in the value (decimal formats). Example: 0 writes 12:54, 3 writes 12:54.425.'),
+            },
+          },
+        ],
+        [
+          {
+            name: 'timeRollup',
+            config: {
+              type: 'SelectControl',
+              label: t('Time metrics in parent rows and totals'),
+              renderTrigger: true,
+              visibility: hasTimeMetric,
+              clearable: false,
+              default: 'mean',
+              choices: [
+                ['mean', t('Average (a sum of waiting times means nothing)')],
+                ['general', t('Like the other metrics (Rollup Aggregation Function)')],
+              ],
+              description: t(
+                'How a parent row, the grand total and the pivot row totals combine the durations of their children. Average uses the Weight Metric when the rollup is Weighted Average, the plain average otherwise.',
+              ),
             },
           },
         ],

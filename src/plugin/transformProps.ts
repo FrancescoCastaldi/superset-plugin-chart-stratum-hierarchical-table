@@ -27,6 +27,14 @@ import {
 } from '../utils/periodLabels';
 import { collectDistinctPivotKeys } from './pivotOrdering';
 import {
+  convertTimeColumns,
+  formatDuration,
+  formatSignedDuration,
+  timeColumnRole,
+  TimeFormatOptions,
+} from '../utils/timeValues';
+import { setTimeMetricNames } from '../utils/timeMetricRegistry';
+import {
   applyDynamicPeriodTitles,
   readChartPeriods,
   stripPeriodColumns,
@@ -59,6 +67,36 @@ function applyColumnDefinition(column: TableColumn, options: TransformOptions): 
   };
 }
 
+/**
+ * Column of a Time metric written as a duration: the values, the comparison period and the row totals
+ * as `mm:ss`, a difference as `+mm:ss`. Percentages, ratios and percentage points stay numbers. A metric
+ * whose definition sets its own format keeps it.
+ */
+function applyTimeColumnFormat(
+  column: TableColumn,
+  timeMetrics: Set<string>,
+  timeFormat: TimeFormatOptions,
+  options: TransformOptions,
+): TableColumn {
+  if (!column.isMetric || column.sparkline || column.calculationType) return column;
+  const metric = column.key.split('___')[0];
+  if (!timeMetrics.has(metric.toLowerCase())) return column;
+  const role = timeColumnRole(column.key);
+  if (role === 'other') return column;
+  if (findMetricDefinition(metric, options.metricDefinitions)?.format) return column;
+  const fallback = column.formatter;
+  const asText = (val: any) => (fallback ? fallback(val) : String(val ?? '-'));
+  return {
+    ...column,
+    exportFormatted: true,
+    formatter: (val: any) => {
+      if (val === null || val === undefined) return '-';
+      if (typeof val !== 'number' || !Number.isFinite(val)) return asText(val);
+      return role === 'delta' ? formatSignedDuration(val, timeFormat) : formatDuration(val, timeFormat);
+    },
+  };
+}
+
 export default function transformProps(
   chartProps: HierarchicalTableChartProps,
 ): HierarchicalTableTransformedProps {
@@ -82,16 +120,51 @@ export default function transformProps(
   };
   // The periods the query ran on come with the data, and are not data of the table.
   const periods = options.periodLabelsFromFilters ? readChartPeriods(fetchedRecords) : null;
-  const dataRecords: DataRecord[] = options.periodLabelsFromFilters
+  const queryRecords: DataRecord[] = options.periodLabelsFromFilters
     ? stripPeriodColumns(fetchedRecords)
     : fetchedRecords;
+
+  // Metrics of type Time arrive as text ("00:12:54.425000"), which the tree would read as 0: they become
+  // seconds here, and the aggregation code is told which metrics are durations. Only metric columns (and
+  // the `<metric>__<offset>` columns of the comparison) are read, never the dimensions.
+  const firstRowKeys = Object.keys(queryRecords[0] ?? {});
+  const timeCandidates = [
+    ...options.metrics,
+    ...firstRowKeys.filter(k => options.metrics.some(m => k.toLowerCase().startsWith(`${m.toLowerCase()}__`))),
+  ];
+  const { rows: dataRecords, timeKeys } =
+    options.timeDetection === 'off'
+      ? { rows: queryRecords, timeKeys: [] as string[] }
+      : convertTimeColumns(queryRecords, timeCandidates);
+  const timeMetrics = new Set(
+    timeKeys.map(k => k.toLowerCase()).filter(k => options.metrics.some(m => m.toLowerCase() === k)),
+  );
+  // Always written, to clear what a previous chart left: parents and totals average the durations
+  setTimeMetricNames(options.timeRollup === 'mean' ? timeMetrics : []);
+  let timeFormat: TimeFormatOptions | undefined;
+  if (timeKeys.length > 0) {
+    let referenceSeconds = 0;
+    for (const row of dataRecords) {
+      for (const k of timeKeys) {
+        const v = row[k];
+        if (typeof v === 'number' && Math.abs(v) > referenceSeconds) referenceSeconds = Math.abs(v);
+      }
+    }
+    timeFormat = {
+      format: options.timeDisplayFormat,
+      fractionDigits: options.timeFractionDigits,
+      referenceSeconds,
+    };
+  }
 
   const { treeData, metrics } = buildTreeData(dataRecords, options);
   // Explicit metric definitions first, so that the deltas computed by the layout read the right values.
   applyMetricDefinitions(treeData, undefined, options.metricDefinitions, options.dimensions);
   const layout = buildMetricLayout(treeData, dataRecords, options, metrics);
 
-  const definedColumns = layout.columns.map(column => applyColumnDefinition(column, options));
+  const definedColumns = layout.columns
+    .map(column => applyColumnDefinition(column, options))
+    .map(column => (timeFormat ? applyTimeColumnFormat(column, timeMetrics, timeFormat, options) : column));
   const metricColumns = applyDynamicPeriodTitles(definedColumns, periods);
   const columns: TableColumn[] = [
     buildHierarchyColumn(options.hierarchyType, options.dimensions),

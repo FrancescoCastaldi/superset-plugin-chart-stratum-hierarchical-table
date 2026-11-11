@@ -1,5 +1,6 @@
 import { TreeNode, AggregationFunction } from '../types';
 import { hasDiffToken } from './nameHeuristics';
+import { isTimeMetricName } from './timeMetricRegistry';
 
 const MEMO_LIMIT = 10000;
 
@@ -68,7 +69,7 @@ export const isDerivedMetric = memoizeByName(function isDerivedMetric(metricName
 /**
  * Checks if a metric is an average, duration, or rate that should use weighted average rather than sum.
  */
-export const isRateMetric = memoizeByName(function isRateMetric(metricName: string): boolean {
+const isRateMetricByName = memoizeByName(function isRateMetricByName(metricName: string): boolean {
   const m = metricName.toLowerCase();
   const isDelta = m.includes('delta') || (m.includes('variazione') || m.includes('change')) || hasDiffToken(m);
   const isAcceptanceRate =
@@ -86,6 +87,13 @@ export const isRateMetric = memoizeByName(function isRateMetric(metricName: stri
     (!isDelta && (m.includes('%') || m.includes('tempo') || m.includes('durata') || m.includes('media')))
   );
 });
+
+/**
+ * Average, duration or rate: rolled up with a weighted average instead of a sum. The metrics that hold
+ * times (read from the data, whatever their name) always are.
+ */
+export const isRateMetric = (metricName: string): boolean =>
+  isTimeMetricName(metricName) || isRateMetricByName(metricName);
 
 /**
  * Helper to extract base metric and pivot suffix (e.g. 'delta_richieste_pct___SSN' -> base: 'delta_richieste_pct', pivot: '___SSN')
@@ -955,6 +963,22 @@ export function computeHorizontalRowTotals(
           if (node.subtotals) {
             node.subtotals[rowTotalKey] = finalVal;
           }
+          continue;
+        }
+
+        // Times are not added across the pivot values: the row total is their average
+        if (isTimeMetricName(m)) {
+          const cells: number[] = [];
+          for (const pVal of pivotValues) {
+            const raw =
+              node.metrics[`${m}___${pVal}`] ??
+              node.metrics[`${m}___${pVal}___SUBTOTAL`] ??
+              (node.subtotals ? (node.subtotals[`${m}___${pVal}`] ?? node.subtotals[`${m}___${pVal}___SUBTOTAL`]) : null);
+            if (typeof raw === 'number' && Number.isFinite(raw)) cells.push(raw);
+          }
+          const mean = cells.length > 0 ? cells.reduce((a, b) => a + b, 0) / cells.length : null;
+          node.metrics[rowTotalKey] = mean;
+          if (node.subtotals) node.subtotals[rowTotalKey] = mean;
           continue;
         }
 

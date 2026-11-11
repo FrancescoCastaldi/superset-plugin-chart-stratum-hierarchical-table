@@ -54,6 +54,19 @@ Frontend visualization plugin for **Apache Superset 6.1.0+** providing a rich, i
 
 The other charts must have the filtered column in their dataset: a chart without it ignores the filter. Turn on *Also filter this table* to apply the selection to the table itself, which then shows only the selected rows.
 
+## Time and duration metrics
+
+A metric of type **Time** (for example the average waiting time, `00:12:54.425000`) is read as a number of seconds and shown as a duration: cells, pivot cells, row totals, parent rows, grand total, the comparison period of the calendar filter and its absolute difference (`+05:00`). Percentages, ratios and percentage points stay numbers.
+
+| Control | What it does |
+|:---|:---|
+| `timeDetection` | `auto` recognizes the Time metrics, `off` leaves them as text |
+| `timeDisplayFormat` | `mm:ss` (or `h:mm:ss` from one hour), `h:mm:ss`, `mm:ss` above 59 minutes, decimal minutes, decimal hours, seconds |
+| `timeFractionDigits` | 0 to 3 digits for the seconds (`12:54`, `12:54.425`) |
+| `timeRollup` | `mean` (default): parents, totals and row totals average the durations; `general`: like the other metrics |
+
+Only metric columns are read, never dimensions. Parent rows average their children; with the Weight Metric set (Weighted Average roll-up) the average is weighted, for example by the number of requests. Conditional formatting rules and goals on a Time metric are written in seconds.
+
 ## Installation & Setup
 
 Install the plugin dependency:
