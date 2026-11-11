@@ -64,3 +64,21 @@ describe('hasTimeMetric', () => {
     expect(hasTimeMetric({ controls: { metrics: { value: ['Attesa Sportello'], datasource: dataset } } })).toBe(true);
   });
 });
+
+
+describe('hasTimeMetric with the dataset as Explore passes it', () => {
+  const dataset = {
+    columns: [{ column_name: 'TempoAttesa', type: 'TIME' }, { column_name: 'Richieste', type: 'INTEGER' }],
+    metrics: [{ metric_name: 'Attesa Sportello', expression: 'AVG([TempoAttesa])' }, { metric_name: 'Numero', expression: 'COUNT(*)' }],
+  };
+
+  it('finds a saved metric on a Time column when the dataset is on the props, not in the controls', () => {
+    const props = { datasource: dataset, controls: { metric: { value: 'Attesa Sportello' } } };
+    expect(hasTimeMetric(props as any)).toBe(true);
+  });
+
+  it('stays hidden for a count when the dataset is on the props', () => {
+    const props = { datasource: dataset, controls: { metric: { value: 'Numero' } } };
+    expect(hasTimeMetric(props as any)).toBe(false);
+  });
+});

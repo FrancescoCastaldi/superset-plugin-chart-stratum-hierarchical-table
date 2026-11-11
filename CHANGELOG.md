@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-11-11
+
+### Fixed
+- **The Time controls did not show up for saved metrics.** The rule that decides whether to show the duration controls looked for the dataset in the datasource control, where Explore keeps only its id. It now reads the dataset that Explore passes to the control panel, as the Donut does. Saved metrics on a TIME or INTERVAL column are recognized again, and so are the metrics with a duration name.
+
 ## [0.17.0] - 2026-11-11
 
 ### Added

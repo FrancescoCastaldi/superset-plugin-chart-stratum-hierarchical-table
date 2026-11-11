@@ -24,8 +24,13 @@ const mentions = (expression: string, name: string): boolean => {
   return new RegExp(`(^|[^\\w])[\\[\\"\`']?${escaped}[\\]\\"\`']?($|[^\\w])`, 'i').test(expression);
 };
 
-function datasetOf(controls: any): any {
-  return controls?.datasource?.datasource ?? controls?.metrics?.datasource ?? controls?.metric?.datasource;
+/**
+ * The dataset of the chart: Explore hands it to the control panel as `datasource` (the same as the
+ * Donut reads it). The datasource control keeps only the id, so it is the fallback.
+ */
+function datasetOf(props: any): any {
+  const controls = props?.controls;
+  return props?.datasource ?? controls?.datasource?.datasource ?? controls?.metrics?.datasource ?? controls?.metric?.datasource;
 }
 
 function isTimeLikeMetric(metric: unknown, dataset: any): boolean {
@@ -60,7 +65,7 @@ function isTimeLikeMetric(metric: unknown, dataset: any): boolean {
 export function hasTimeMetric(props: { controls?: any }): boolean {
   const controls = props?.controls;
   if (!controls) return false;
-  const dataset = datasetOf(controls);
+  const dataset = datasetOf(props);
   return METRIC_CONTROLS.some(name => {
     const value = controls[name]?.value;
     const list = Array.isArray(value) ? value : value ? [value] : [];
