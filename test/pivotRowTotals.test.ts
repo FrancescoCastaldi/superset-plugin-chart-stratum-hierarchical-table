@@ -234,5 +234,55 @@ describe('Two-Way Pivot Matrix Grid & Horizontal Row Totals', () => {
       const hasRowTotal = props.columns.some(c => c.key.includes('___ROW_TOTAL'));
       expect(hasRowTotal).toBe(false);
     });
+
+    it('computes pivot row totals using aggregationMode (avg, min, max, weighted_avg) instead of hardcoded sum', () => {
+      const avgProps = transformProps({
+        ...baseChartProps,
+        formData: {
+          ...baseChartProps.formData,
+          pivotRowTotalsPosition: 'right',
+          aggregationMode: 'avg',
+        },
+      } as HierarchicalTableChartProps);
+      const lunAvg = avgProps.data.find(n => n.name === 'Lun')!;
+      // Lun totale across two slots: 39 and 19 -> avg 29
+      expect(lunAvg.metrics['totale___ROW_TOTAL']).toBeCloseTo(29);
+
+      const minProps = transformProps({
+        ...baseChartProps,
+        formData: {
+          ...baseChartProps.formData,
+          pivotRowTotalsPosition: 'right',
+          aggregationMode: 'min',
+        },
+      } as HierarchicalTableChartProps);
+      expect(minProps.data.find(n => n.name === 'Lun')!.metrics['totale___ROW_TOTAL']).toBe(19);
+
+      const weightedProps = transformProps({
+        width: 1200,
+        height: 600,
+        formData: {
+          hierarchyType: 'multi_dimension',
+          groupby: ['reparto'],
+          columns: ['turno'],
+          metrics: ['prezzo', 'volumi'],
+          pivotRowTotalsPosition: 'right',
+          aggregationMode: 'weighted_avg',
+          weightColumn: 'volumi',
+        },
+        queriesData: [
+          {
+            data: [
+              { reparto: 'Cardio', turno: 'M', prezzo: 10, volumi: 100 },
+              { reparto: 'Cardio', turno: 'P', prezzo: 40, volumi: 300 },
+            ],
+          },
+        ],
+      } as HierarchicalTableChartProps);
+      const cardio = weightedProps.data.find(n => n.name === 'Cardio')!;
+      // (10*100 + 40*300) / (100+300) = 13000 / 400 = 32.5; weight volumi itself sums to 400
+      expect(cardio.metrics['prezzo___ROW_TOTAL']).toBeCloseTo(32.5);
+      expect(cardio.metrics['volumi___ROW_TOTAL']).toBe(400);
+    });
   });
 });

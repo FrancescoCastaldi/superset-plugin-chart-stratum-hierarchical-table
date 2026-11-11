@@ -33,7 +33,6 @@ import {
   timeColumnRole,
   TimeFormatOptions,
 } from '../utils/timeValues';
-import { setTimeMetricNames } from '../utils/timeMetricRegistry';
 import {
   applyDynamicPeriodTitles,
   readChartPeriods,
@@ -139,8 +138,7 @@ export default function transformProps(
   const timeMetrics = new Set(
     timeKeys.map(k => k.toLowerCase()).filter(k => options.metrics.some(m => m.toLowerCase() === k)),
   );
-  // Always written, to clear what a previous chart left: parents and totals average the durations
-  setTimeMetricNames(options.timeRollup === 'mean' ? timeMetrics : []);
+  const activeTimeMetrics = options.timeRollup === 'mean' ? timeMetrics : new Set<string>();
   let timeFormat: TimeFormatOptions | undefined;
   if (timeKeys.length > 0) {
     let referenceSeconds = 0;
@@ -157,10 +155,10 @@ export default function transformProps(
     };
   }
 
-  const { treeData, metrics } = buildTreeData(dataRecords, options);
+  const { treeData, metrics } = buildTreeData(dataRecords, options, activeTimeMetrics);
   // Explicit metric definitions first, so that the deltas computed by the layout read the right values.
   applyMetricDefinitions(treeData, undefined, options.metricDefinitions, options.dimensions);
-  const layout = buildMetricLayout(treeData, dataRecords, options, metrics);
+  const layout = buildMetricLayout(treeData, dataRecords, options, metrics, activeTimeMetrics);
 
   const definedColumns = layout.columns
     .map(column => applyColumnDefinition(column, options))
@@ -208,6 +206,7 @@ export default function transformProps(
     aggregationMode: options.aggregationMode,
     showVarianceDelta: options.showVarianceDelta,
     showCalendarComparison: options.showCalendarComparison,
+    timeMetrics: activeTimeMetrics,
   });
   // The deltas of the paired comparison on the grand total, from its own current and comparison values.
   if (grandTotalNode && layout.pairedKeys && layout.pairedFormats) {
@@ -269,6 +268,10 @@ export default function transformProps(
     onContextMenu,
     ...(onReorderMetrics ? { onReorderMetrics } : {}),
     ...(options.enableWhatIf ? { enableWhatIf: true } : {}),
+    ...(options.aggregationMode !== 'sum' ? { aggregationMode: options.aggregationMode } : {}),
+    ...(options.weightColumn ? { weightColumn: options.weightColumn } : {}),
+    ...(options.metricDefinitions.length > 0 ? { metricDefinitions: options.metricDefinitions } : {}),
+    ...(activeTimeMetrics.size > 0 ? { timeMetrics: Array.from(activeTimeMetrics) } : {}),
     ...(onWhatIfChange ? { onWhatIfChange } : {}),
     ...(options.showVarianceDelta ? { showVarianceDelta: true } : {}),
     // Omitted when on (the default) so existing charts keep their props shape.

@@ -523,6 +523,7 @@ export function computeNativeTimeDelta(
   nodes: TreeNode[],
   metrics: string[],
   pivotValues: string[],
+  timeMetrics?: ReadonlySet<string>,
 ): boolean {
   if (!hasNativeComparison(nodes, metrics)) return false;
   const baseMetrics = metrics.filter(
@@ -542,7 +543,7 @@ export function computeNativeTimeDelta(
           return value === null ? sum : (sum ?? 0) + value;
         }, null);
         let baseline = toFiniteNumber(rawBaseline);
-        if (isTimeMetricName(m)) {
+        if (isTimeMetricName(m, timeMetrics)) {
           // Times are averaged over the pivot values, current and comparison alike (the baseline of the
           // row is a sum of the comparison cells, which means nothing for a duration)
           if (current !== null && count > 0) current /= count;

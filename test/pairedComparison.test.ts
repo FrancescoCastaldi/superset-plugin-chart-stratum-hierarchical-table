@@ -227,12 +227,11 @@ describe('paired calendar comparison', () => {
       { sede: 'B', visite: 50, [`visite__${OFFSET}`]: 0 },
     ];
 
-    it('keeps value, comparison, Δ and Δ% when the chart never chose the formats', () => {
+    it('keeps only value, comparison and Δ% by default when the chart never chose the formats', () => {
       const props = run({}, flat);
       expect(keys(props.columns).slice(1)).toEqual([
         'visite',
         'visite___comp',
-        'visite___diff',
         'visite___delta',
       ]);
     });
@@ -242,6 +241,71 @@ describe('paired calendar comparison', () => {
       expect(keys(props.columns).slice(1)).toEqual(['visite', 'visite___comp', 'visite___ratio']);
       expect(row(props.data, 'A').metrics['visite___ratio']).toBe(1.2);
       expect((props.grandTotalNode as TreeNode).metrics['visite___ratio']).toBe(1.7);
+    });
+
+    it('respects show_calendar_comparison=false in flat layout even when offset columns exist', () => {
+      const props = run({ show_calendar_comparison: false }, flat);
+      expect(keys(props.columns).slice(1)).toEqual(['visite']);
+      expect(props.columns.find(c => c.key === 'visite')?.title).toBe('visite');
+      expect(keys(props.columns).some(k => k.endsWith('___comp') || k.endsWith('___delta'))).toBe(false);
+    });
+
+    it('resolves ___delta collision when showVarianceDelta and calendar comparison are both active in flat layout', () => {
+      const multiPeriodFlat = [
+        { anno: 2024, visite: 100, [`visite__${OFFSET}`]: 80 },
+        { anno: 2025, visite: 150, [`visite__${OFFSET}`]: 100 },
+      ];
+      const props = run(
+        { groupby: ['anno'], showVarianceDelta: true, show_calendar_comparison: true },
+        multiPeriodFlat,
+      );
+      const deltaCols = props.columns.filter(c => c.key === 'visite___delta');
+      expect(deltaCols).toHaveLength(1);
+      // Calendar comparison takes precedence: (150 - 100) / 100 = +50%, not row-to-row (150 - 100) / 100 or overwritten
+      expect(row(props.data, '2024').metrics['visite___delta']).toBe(25);
+      expect(row(props.data, '2025').metrics['visite___delta']).toBe(50);
+    });
+
+    it('only detects flat comparison from ${metric}__ columns, preserves null missing comparison and does not overwrite defined/weighted parent values', () => {
+      const recordsWithAttrUnderscore = [
+        { cod__interno: 'X', visite: 10 },
+        { cod__interno: 'Y', visite: 20 },
+      ];
+      const noFalseComp = run({}, recordsWithAttrUnderscore);
+      expect(keys(noFalseComp.columns)).toEqual(['__hierarchy_tree__', 'visite']);
+
+      const missingCompRecords = [
+        { gruppo: 'G1', sede: 'A', visite: 50, [`visite__${OFFSET}`]: null, peso: 10, prezzo: 0.2 },
+        { gruppo: 'G1', sede: 'B', visite: 30, [`visite__${OFFSET}`]: 0, peso: 30, prezzo: 0.6 },
+        { gruppo: 'G2', sede: 'C', visite: 40, [`visite__${OFFSET}`]: undefined, peso: 10, prezzo: 0.4 },
+      ];
+      const props = transformProps({
+        width: 900,
+        height: 400,
+        formData: {
+          groupby: ['gruppo', 'sede'],
+          metrics: ['visite', 'prezzo', 'peso'],
+          aggregationMode: 'weighted_avg',
+          weightColumn: 'peso',
+        },
+        queriesData: [{ data: missingCompRecords }],
+      } as any);
+
+      const g1 = row(props.data, 'G1');
+      const a = g1.children!.find(c => c.name === 'A')!;
+      const b = g1.children!.find(c => c.name === 'B')!;
+      const g2 = row(props.data, 'G2');
+
+      // Missing comparison is null (not coerced to 0 -> no false "Nuovo")
+      expect(a.metrics['visite___comp']).toBeNull();
+      expect(a.metrics['visite___delta']).toBeNull();
+      expect(g2.metrics['visite___comp']).toBeNull();
+      expect(g2.metrics['visite___delta']).toBeNull();
+      // Explicit 0 comparison still yields "Nuovo"
+      expect(b.metrics['visite___comp']).toBe(0);
+      expect(b.metrics['visite___delta']).toBe('Nuovo');
+      // Precomputed weighted_avg parent value must NOT be overwritten by raw sum (0.2*10 + 0.6*30)/40 = 0.5, not 0.8!
+      expect(g1.metrics['prezzo']).toBeCloseTo(0.5);
     });
   });
 

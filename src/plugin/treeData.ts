@@ -4,6 +4,7 @@ import { buildMultiDimensionTree, buildParentChildTree } from '../utils/treeBuil
 import { computeTreeTimeComparison } from '../utils/timeComparison';
 import { applyDimensionLimits } from '../utils/dimensionLimits';
 import { TransformOptions } from './formDataOptions';
+import { flatComparisonColumns } from './pairedComparison';
 
 export type TreeDataOptions = Pick<
   TransformOptions,
@@ -15,6 +16,7 @@ export type TreeDataOptions = Pick<
   | 'parentIdColumn'
   | 'labelColumn'
   | 'showVarianceDelta'
+  | 'showCalendarComparison'
   | 'weightColumn'
   | 'aggregationMode'
   | 'dimensionLimits'
@@ -42,6 +44,7 @@ export function applyVarianceDelta(treeData: TreeNode[], metrics: string[]): str
 export function buildTreeData(
   records: DataRecord[],
   options: TreeDataOptions,
+  timeMetrics?: ReadonlySet<string>,
 ): { treeData: TreeNode[]; metrics: string[] } {
   const { hierarchyType, dimensions, pivotDimensions } = options;
   let metrics = [...options.metrics];
@@ -55,6 +58,7 @@ export function buildTreeData(
           pivotDimensions,
           options.weightColumn,
           options.aggregationMode,
+          timeMetrics,
         )
       : buildParentChildTree(
           records,
@@ -64,17 +68,26 @@ export function buildTreeData(
           metrics,
           options.weightColumn,
           options.aggregationMode,
+          timeMetrics,
         );
 
   if (options.dimensionLimits && options.dimensionLimits.length > 0) {
     treeData = applyDimensionLimits(treeData, options.dimensionLimits, metrics[0]);
   }
 
+  const isFlat = !pivotDimensions || pivotDimensions.length === 0;
+  const hasFlatCalendar =
+    isFlat &&
+    options.showCalendarComparison !== false &&
+    Object.keys(flatComparisonColumns(records, metrics)).length > 0;
+
+  // Calendar Filter comparison (T2) takes precedence over adjacent-row variance deltas on flat ___delta keys.
   if (
     options.showVarianceDelta &&
     hierarchyType === 'multi_dimension' &&
     dimensions.length > 0 &&
-    (!pivotDimensions || pivotDimensions.length === 0)
+    isFlat &&
+    !hasFlatCalendar
   ) {
     metrics = applyVarianceDelta(treeData, metrics);
   }

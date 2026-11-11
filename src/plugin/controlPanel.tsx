@@ -3,18 +3,14 @@ import {
   sharedControls,
   D3_FORMAT_OPTIONS,
 } from '@superset-ui/chart-controls';
-import { hasTimeMetric } from './timeMetricHints';
+import { showDurationControl } from './timeMetricHints';
 import { isValidHex } from '../utils/themes';
 
-const t = (str: string) => str;
-
-// Explore renders a React element placed in a control row as-is: this gives macro-sections
-// visual sub-groups while controlPanelSections stays a flat list of sections.
 const subsectionHeader = (label: string) => <h4 className="section-header">{label}</h4>;
 const subsectionDivider = () => <hr />;
 
-// Explore also accepts a component as control type: the list is edited as JSON and stored in
-// the form data as a real array; text that does not parse to an array is not saved.
+// Explore accetta un componente React personalizzato: la lista viene modificata come JSON
+// e salvata in formData come array reale; testo non valido non sovrascrive il valore salvato.
 function ArrayControl({
   label,
   description,
@@ -38,7 +34,7 @@ function ArrayControl({
             const parsed = JSON.parse(e.target.value);
             if (Array.isArray(parsed)) onChange?.(parsed);
           } catch {
-            // Incomplete JSON while typing: the last valid list stays saved.
+            // JSON incompleto durante la digitazione: resta salvato l'ultimo elenco valido.
           }
         }}
       />
@@ -46,61 +42,90 @@ function ArrayControl({
   );
 }
 
-const customHexControl = (name: string, label: string) => ({
+const customHexControl = (name: string, label: string, exampleHex: string) => ({
   name,
   config: {
     type: 'TextControl',
     label,
     renderTrigger: true,
     default: '',
-    description: t('#RRGGBB or empty for the standard color; keep 3:1 contrast on white.'),
-    validators: [(v: string) => (!v || isValidHex(v) ? false : t('Use the #RRGGBB format'))],
+    description: `Codice esadecimale #RRGGBB o vuoto per usare il colore standard; mantenere contrasto almeno 3:1 su bianco. Esempio: ${exampleHex}.`,
+    validators: [(v: string) => (!v || isValidHex(v) ? false : 'Usa il formato #RRGGBB')],
     visibility: ({ controls }: { controls: any }) => controls?.themeProfile?.value === 'custom',
   },
 });
 
-// The time comparison reads its periods from the values of a single pivot column or general variance delta.
-const isSinglePivot = ({ controls }: { controls: any }) =>
-  controls?.hierarchyType?.value === 'multi_dimension' &&
-  Array.isArray(controls?.columns?.value) &&
-  controls.columns.value.length === 1;
+const metricNamesOf = (explore: any): string[] => {
+  const raw = explore?.controls?.metrics?.value || explore?.controls?.metric?.value || [];
+  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const m of list) {
+    const name = typeof m === 'string' ? m : m?.label || m?.metric_name || String(m || '');
+    const clean = name.trim();
+    if (clean && !seen.has(clean)) {
+      seen.add(clean);
+      names.push(clean);
+    }
+  }
+  return names;
+};
 
-const isComparisonVisible = ({ controls }: { controls: any }) =>
-  Boolean(controls?.showVarianceDelta?.value) ||
-  isSinglePivot({ controls });
+const isMultiDim = ({ controls }: { controls: any }) =>
+  controls?.hierarchyType?.value === 'multi_dimension';
+
+const isParentChild = ({ controls }: { controls: any }) =>
+  controls?.hierarchyType?.value === 'parent_child';
+
+const pivotCountOf = (controls: any): number =>
+  Array.isArray(controls?.columns?.value) ? controls.columns.value.length : 0;
+
+const hasPivot = ({ controls }: { controls: any }) =>
+  isMultiDim({ controls }) && pivotCountOf(controls) > 0;
+
+const isSinglePivot = ({ controls }: { controls: any }) =>
+  isMultiDim({ controls }) && pivotCountOf(controls) === 1;
+
+const isTwoWayPivot = ({ controls }: { controls: any }) =>
+  isMultiDim({ controls }) && pivotCountOf(controls) >= 2;
+
+const isFlatLayout = ({ controls }: { controls: any }) =>
+  !hasPivot({ controls });
 
 export const CUSTOM_D3_FORMAT_OPTIONS: [string, string][] = [
-  ['SMART_NUMBER', 'Adaptive formatting (Smart Number)'],
-  [',d', '1,234 (Integer)'],
-  ['.2f', '1234.56 (2 decimals)'],
-  [',.2f', '1,234.56 (2 decimals)'],
-  [',.1f', '1,234.6 (1 decimal)'],
-  ['.2%', '12.34% (Percentage)'],
-  ['.1%', '12.3% (Percentage)'],
-  ['~s', '1.2k (SI prefix)'],
+  ['SMART_NUMBER', 'Formattazione adattiva (Smart Number)'],
+  [',d', '1,234 (Intero)'],
+  ['.2f', '1234.56 (2 decimali)'],
+  [',.2f', '1,234.56 (2 decimali)'],
+  [',.1f', '1,234.6 (1 decimale)'],
+  ['.2%', '12.34% (Percentuale)'],
+  ['.1%', '12.3% (Percentuale)'],
+  ['~s', '1.2k (Prefisso SI)'],
 ];
 
 const config: ControlPanelConfig = {
   controlPanelSections: [
     {
-      label: t('Data'),
+      label: 'Dati',
       expanded: true,
+      tabOverride: 'data',
+      description: 'Struttura della gerarchia, dimensioni di riga e pivot, metriche, filtri e limiti.',
       controlSetRows: [
         [
           {
             name: 'hierarchyType',
             config: {
               type: 'SelectControl',
-              label: t('Hierarchy Mode'),
+              label: 'Modalità gerarchia',
               default: 'multi_dimension',
+              clearable: false,
               choices: [
-                ['multi_dimension', t('Multi-Dimension Grouping (Level-based)')],
-                ['parent_child', t('Parent-Child Adjacency (ID / Parent ID)')],
+                ['multi_dimension', 'Multi-dimensione (livelli da colonne ordinate)'],
+                ['parent_child', 'Padre-figlio (tabella ID / Parent ID)'],
               ],
               renderTrigger: false,
-              description: t(
-                'Choose whether hierarchy is derived from ordered categorical dimensions or parent-child relations.',
-              ),
+              description:
+                'Sceglie se costruire l\'albero da colonne gerarchiche successive oppure da relazioni ID e Parent ID. Esempio: Regione → Provincia → Comune.',
             },
           },
         ],
@@ -109,12 +134,62 @@ const config: ControlPanelConfig = {
             name: 'groupby',
             config: {
               ...sharedControls.groupby,
-              label: t('Hierarchy Dimensions / Rows (in order)'),
-              description: t('Select dimensions from highest to lowest level of hierarchy for rows (e.g. FARE LIV1 > FARE LIV2 > Prestazione).'),
+              label: 'Dimensioni della gerarchia (in ordine)',
+              description:
+                'Colonne ordinate dal livello radice alle foglie dell\'albero. Esempio: Dipartimento, Reparto, Medico.',
+              visibility: isMultiDim,
+            },
+          },
+        ],
+        [
+          {
+            name: 'idColumn',
+            config: {
+              ...sharedControls.groupby,
+              label: 'Colonna ID nodo',
+              multi: false,
+              clearable: false,
+              description:
+                'Identificativo univoco di ogni nodo nella gerarchia padre-figlio. Esempio: id_voce.',
+              visibility: isParentChild,
+            },
+          },
+          {
+            name: 'parentIdColumn',
+            config: {
+              ...sharedControls.groupby,
+              label: 'Colonna ID padre',
+              multi: false,
               clearable: true,
+              description:
+                'Identificativo del nodo genitore (vuoto o NULL per le radici). Esempio: id_padre.',
+              visibility: isParentChild,
+            },
+          },
+        ],
+        [
+          {
+            name: 'labelColumn',
+            config: {
+              ...sharedControls.groupby,
+              label: 'Colonna etichetta nodo (opzionale)',
+              multi: false,
+              clearable: true,
+              description:
+                'Testo mostrato nell\'albero al posto del codice ID. Esempio: descrizione_voce.',
+              visibility: isParentChild,
+            },
+          },
+        ],
+        [
+          {
+            name: 'metrics',
+            config: {
+              ...sharedControls.metrics,
+              label: 'Metriche',
+              description:
+                'Misure numeriche o di durata visualizzate come colonne della tabella. Esempio: Richieste, Ricavi, Tempo medio.',
               validators: [],
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension',
             },
           },
         ],
@@ -123,12 +198,12 @@ const config: ControlPanelConfig = {
             name: 'columns',
             config: {
               ...sharedControls.groupby,
-              label: t('Pivot columns (horizontal matrix)'),
-              description: t('Optional: group metrics horizontally by one or more dimensions (e.g. RegimeErogazione).'),
+              label: 'Colonne pivot (matrice orizzontale)',
+              multi: true,
               clearable: true,
-              validators: [],
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension',
+              description:
+                'Distribuisce le metriche in orizzontale per i valori di una o due colonne (es. Mese oppure Anno e Trimestre). Lascia vuoto per una tabella piatta.',
+              visibility: isMultiDim,
             },
           },
         ],
@@ -137,164 +212,55 @@ const config: ControlPanelConfig = {
             name: 'combineMetric',
             config: {
               type: 'CheckboxControl',
-              label: t('Combine metrics by column (side by side for each pivot column)'),
+              label: 'Raggruppa metriche sotto ogni valore pivot',
               renderTrigger: true,
               default: true,
-              description: t(
-                'Display all metrics side by side under each pivot column value (e.g., [Oct 2026 > Total | Delta]) instead of separating metrics into distinct column groups.',
-              ),
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension' &&
-                Boolean(controls?.columns?.value && controls.columns.value.length > 0),
+              description:
+                'Se attivo mostra tutte le metriche affiancate sotto ogni periodo pivot (es. Gen [A, B], Feb [A, B]); altrimenti raggruppa per metrica.',
+              visibility: hasPivot,
             },
           },
           {
             name: 'pivotSortOrder',
             config: {
               type: 'SelectControl',
-              label: t('Pivot columns order'),
+              label: 'Ordine colonne pivot',
               default: 'desc',
+              clearable: false,
               renderTrigger: true,
               choices: [
-                ['desc', t('Descending / most recent first (e.g. Oct 2026 -> Jan 2026)')],
-                ['asc', t('Ascending / Cronologico (e.g. Gen 2026 -> Ott 2026)')],
-                ['none', t('Appearance / Query Order')],
+                ['desc', 'Decrescente / più recente prima (es. Ott 2026 → Gen 2026)'],
+                ['asc', 'Crescente / cronologico (es. Gen 2026 → Ott 2026)'],
+                ['none', 'Ordine restituito dalla query'],
               ],
-              description: t('Order in which pivot columns appear across the table.'),
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension' &&
-                Boolean(controls?.columns?.value && controls.columns.value.length > 0),
+              description:
+                'Direzione con cui disporre le intestazioni delle colonne pivot. Esempio: Crescente per leggere i trend temporali da sinistra a destra.',
+              visibility: hasPivot,
             },
           },
         ],
-        [
-          {
-            name: 'pivotRowTotalsPosition',
-            config: {
-              type: 'SelectControl',
-              label: t('Pivot row totals (horizontal row totals)'),
-              default: 'none',
-              renderTrigger: true,
-              choices: [
-                ['none', t('None (no horizontal total)')],
-                ['left', t('Left / start (Qlik Sense style, before the pivot columns)')],
-                ['right', t('Right / end (classic Excel style, at the end of the table)')],
-              ],
-              description: t(
-                'Places the row totals macro-column on the left (Qlik Sense style) or on the right.',
-              ),
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension' &&
-                Boolean(controls?.columns?.value && controls.columns.value.length > 0),
-            },
-          },
-          {
-            name: 'pivotRowTotalsLabel',
-            config: {
-              type: 'TextControl',
-              label: t('Pivot row totals label'),
-              default: 'Totals',
-              renderTrigger: true,
-              description: t(
-                'Text shown in the header of the horizontal totals column (e.g. Totals, Grand total, Actuals).',
-              ),
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension' &&
-                Boolean(controls?.columns?.value && controls.columns.value.length > 0) &&
-                controls?.pivotRowTotalsPosition?.value &&
-                controls?.pivotRowTotalsPosition?.value !== 'none',
-            },
-          },
-        ],
-        [
-          {
-            name: 'showPivotColumnSubtotals',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Show pivot column subtotals'),
-              renderTrigger: true,
-              default: true,
-              description: t(
-                'Shows the subtotal column for each first-level pivot group (and in the Totals block), next to the values of the second pivot dimension.',
-              ),
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension' &&
-                Boolean(controls?.columns?.value && controls.columns.value.length > 0),
-            },
-          },
-          {
-            name: 'pivotColumnSubtotalLabel',
-            config: {
-              type: 'TextControl',
-              label: t('Pivot column subtotal label'),
-              default: 'Total',
-              renderTrigger: true,
-              description: t(
-                'Text for the column subtotal column (e.g. Total, Subtotal, Sum).',
-              ),
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension' &&
-                Boolean(controls?.columns?.value && controls.columns.value.length > 0) &&
-                controls?.showPivotColumnSubtotals?.value !== false,
-            },
-          },
-        ],
-        [
-          {
-            name: 'pivotTimeDeltaMode',
-            config: {
-              type: 'SelectControl',
-              label: t('Variazione automatica tra colonne pivot'),
-              default: 'none',
-              renderTrigger: true,
-              choices: [
-                ['none', t('Nessuna (nessuna variazione automatica)')],
-                ['absolute', t('Variazione assoluta (Δ = valore - periodo precedente)')],
-                ['percentage', t('Variazione percentuale (Δ% = (valore - periodo precedente) / periodo precedente)')],
-                ['both', t('Entrambe (Δ assoluta + Δ%)')],
-              ],
-              description: t(
-                'Calcola la variazione rispetto al periodo precedente lungo le colonne pivot, senza funzioni SQL window.',
-              ),
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension' &&
-                Boolean(controls?.columns?.value && controls.columns.value.length > 0),
-            },
-          },
-          {
-            name: 'pivotTimeDeltaLag',
-            config: {
-              type: 'SelectControl',
-              label: t('Passo di confronto (periodi indietro)'),
-              default: 1,
-              renderTrigger: true,
-              choices: [
-                [1, t('1 periodo (es. mese precedente / MoM, anno precedente / YoY)')],
-                [2, t('2 periodi')],
-                [3, t('3 periodi (es. trimestre precedente / QoQ)')],
-                [12, t('12 periodi (es. stesso mese dell\'anno precedente / YoY)')],
-              ],
-              description: t('Quanti periodi indietro usare come base della variazione.'),
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension' &&
-                Boolean(controls?.columns?.value && controls.columns.value.length > 0) &&
-                controls?.pivotTimeDeltaMode?.value !== 'none',
-            },
-          },
-        ],
+        ['adhoc_filters'],
+        ['row_limit'],
+      ],
+    },
+    {
+      label: 'Confronto tra periodi',
+      expanded: false,
+      tabOverride: 'data',
+      description: 'Confronto con Calendar Filter, delta tra colonne pivot, badge di varianza e titoli periodo.',
+      controlSetRows: [
+        [subsectionHeader('Confronto con filtro Calendar')],
         [
           {
             name: 'show_calendar_comparison',
             config: {
               type: 'CheckboxControl',
-              label: t('Confronto con il periodo di confronto del filtro Calendar'),
-              description: t(
-                'Il filtro Calendar della dashboard può avere un periodo corrente (T1) e un periodo di confronto (T2). Con questa opzione attiva, la tabella mostra il periodo di confronto accanto al periodo corrente, per ogni metrica. Senza un periodo di confronto nel filtro non compare alcuna colonna di confronto.',
-              ),
+              label: 'Attiva confronto del filtro Calendar',
+              description:
+                'Mostra automaticamente periodo di confronto e variazioni quando la dashboard usa il filtro Calendar (es. 2026 vs 2025).',
               default: true,
               renderTrigger: true,
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension',
+              visibility: isMultiDim,
             },
           },
         ],
@@ -303,19 +269,32 @@ const config: ControlPanelConfig = {
             name: 'calendar_comparison_mode',
             config: {
               type: 'SelectControl',
-              label: t('Come mostrare il confronto del filtro Calendar'),
+              label: 'Layout del confronto Calendar',
               default: 'paired',
               clearable: false,
               renderTrigger: true,
               choices: [
-                ['paired', t('Coppia per ogni cella (corrente | confronto | Δ)')],
-                ['row_total', t('Solo Δ del totale di riga (tabella pivot con una colonna)')],
+                ['paired', 'Coppia per ogni cella (corrente | confronto | delta)'],
+                ['row_total', 'Solo delta del totale di riga (pivot singolo)'],
               ],
-              description: t(
-                'Coppia: accanto a ogni valore compare lo stesso valore nel periodo di confronto e la variazione, per ogni valore pivot (es. lunedì 2026 e lunedì 2025). Vale per tabelle piatte, con una colonna pivot e con due. Totale di riga: una sola variazione per riga, tra il totale corrente e il totale di confronto.',
-              ),
+              description:
+                'Coppia: mostra il confronto accanto a ogni valore o colonna pivot. Totale di riga: aggiunge una sola colonna delta sul totale orizzontale. Esempio: Coppia per confrontare ogni reparto.',
               visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension' &&
+                isMultiDim({ controls }) &&
+                controls?.show_calendar_comparison?.value !== false,
+            },
+          },
+          {
+            name: 'calendar_comparison_label',
+            config: {
+              type: 'TextControl',
+              label: 'Titolo colonne di confronto',
+              default: '{periodo}',
+              renderTrigger: true,
+              description:
+                'Intestazione delle colonne T2; {periodo} inserisce il periodo effettivo del filtro Calendar. Esempio: Anno precedente ({periodo}).',
+              visibility: ({ controls }: { controls: any }) =>
+                isMultiDim({ controls }) &&
                 controls?.show_calendar_comparison?.value !== false,
             },
           },
@@ -325,161 +304,558 @@ const config: ControlPanelConfig = {
             name: 'calendar_comparison_formats',
             config: {
               type: 'SelectControl',
-              multi: true,
-              label: t('Variazioni da mostrare nel confronto'),
+              label: 'Formati di delta da mostrare',
               default: ['pct'],
+              multi: true,
+              clearable: true,
               renderTrigger: true,
               choices: [
-                ['abs', t('Δ assoluto (corrente - confronto)')],
-                ['pct', t('Δ % ((corrente - confronto) / confronto)')],
-                ['pp', t('Punti percentuali (per metriche già in %)')],
-                ['ratio', t('Rapporto (corrente / confronto, es. 1,12×)')],
+                ['abs', 'Delta assoluto (corrente - confronto)'],
+                ['pct', 'Delta percentuale ((corrente - confronto) / confronto)'],
+                ['pp', 'Punti percentuali (per tassi già espressi in %)'],
+                ['ratio', 'Rapporto (corrente / confronto, es. 1,12x)'],
               ],
-              description: t(
-                'Le variazioni sono colorate di verde se migliorano e di rosso se peggiorano. Per le metriche in cui un valore più basso è meglio, imposta la polarità nelle definizioni delle metriche. Lasciando vuoto si vedono solo i due valori.',
-              ),
+              description:
+                'Colonne delta generate accanto al valore di confronto; lascia vuoto per mostrare solo i due periodi. Esempio: Delta percentuale.',
               visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension' &&
+                isMultiDim({ controls }) &&
                 controls?.show_calendar_comparison?.value !== false &&
                 controls?.calendar_comparison_mode?.value !== 'row_total',
             },
           },
         ],
+        [subsectionDivider()],
+        [subsectionHeader('Variazione automatica tra colonne pivot (pivot singolo)')],
         [
           {
-            name: 'calendar_comparison_label',
+            name: 'pivotTimeDeltaMode',
+            config: {
+              type: 'SelectControl',
+              label: 'Variazione tra colonne pivot',
+              default: 'none',
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                ['none', 'Nessuna variazione tra colonne pivot'],
+                ['absolute', 'Variazione assoluta (valore - precedente)'],
+                ['percentage', 'Variazione percentuale (delta %)'],
+                ['both', 'Entrambe (delta assoluto e delta %)'],
+              ],
+              description:
+                'Calcola lo scostamento tra colonne pivot temporali (es. Feb vs Gen) senza window function SQL.',
+              visibility: isSinglePivot,
+            },
+          },
+          {
+            name: 'pivotTimeDeltaLag',
+            config: {
+              type: 'SelectControl',
+              label: 'Passo di confronto (periodi indietro)',
+              default: 1,
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                [1, '1 periodo (mese o anno precedente)'],
+                [2, '2 periodi indietro'],
+                [3, '3 periodi (trimestre precedente)'],
+                [12, '12 periodi (stesso mese anno precedente)'],
+              ],
+              description:
+                'Numero di colonne pivot indietro da usare come base del confronto. Esempio: 1 per MoM o 12 per YoY su serie mensili.',
+              visibility: ({ controls }: { controls: any }) =>
+                isSinglePivot({ controls }) &&
+                controls?.pivotTimeDeltaMode?.value !== 'none',
+            },
+          },
+        ],
+        [
+          {
+            name: 'timeGrain',
+            config: {
+              type: 'SelectControl',
+              label: 'Granularità temporale del pivot',
+              default: 'year',
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                ['auto', 'Automatica (rileva dai dati)'],
+                ['day', 'Giorno (DoD)'],
+                ['week', 'Settimana (WoW)'],
+                ['month', 'Mese (MoM)'],
+                ['quarter', 'Trimestre (QoQ)'],
+                ['year', 'Anno (YoY)'],
+              ],
+              description:
+                'Durata dei periodi sulle colonne pivot (YYYY, YYYY-MM, YYYY-Qn). Esempio: Mese su colonne 2026-01, 2026-02.',
+              visibility: isSinglePivot,
+            },
+          },
+          {
+            name: 'comparisonType',
+            config: {
+              type: 'SelectControl',
+              label: 'Strategia base di confronto',
+              default: 'prev_period',
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                ['prev_period', 'Periodo immediatamente precedente'],
+                ['prev_year_same_period', 'Stesso periodo dell\'anno precedente'],
+                ['budget_target', 'Budget / obiettivo pianificato'],
+              ],
+              description:
+                'Base usata per calcolare la variazione di fine serie nel pivot singolo. Esempio: Stesso periodo anno precedente per YoY.',
+              visibility: isSinglePivot,
+            },
+          },
+        ],
+        [
+          {
+            name: 'referencePeriod',
+            config: {
+              type: 'SelectControl',
+              label: 'Periodo di riferimento della strategia',
+              default: 'current',
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                ['current', 'Periodo attivo corrente'],
+                ['previous', 'Periodo completo precedente'],
+                ['ytd', 'Media progressiva anno (YTD)'],
+              ],
+              description:
+                'Baseline dell\'ultimo periodo rispetto a se stesso, al periodo chiuso precedente o alla media YTD. Esempio: Periodo completo precedente.',
+              visibility: (state: { controls: any }) =>
+                isSinglePivot(state) &&
+                (state.controls?.comparisonType?.value ?? 'prev_period') === 'prev_period',
+            },
+          },
+        ],
+        [subsectionDivider()],
+        [subsectionHeader('Badge di varianza e titoli dinamici dei periodi')],
+        [
+          {
+            name: 'showVarianceDelta',
+            config: {
+              type: 'CheckboxControl',
+              label: 'Abilita badge / delta di varianza',
+              renderTrigger: true,
+              default: false,
+              description:
+                'Calcola delta percentuale cronologico su tabella piatta o tra periodi pivot (salvo precedenza del filtro Calendar). Esempio: +14,2% accanto al valore.',
+              visibility: ({ controls }: { controls: any }) =>
+                isMultiDim({ controls }) && !isTwoWayPivot({ controls }),
+            },
+          },
+          {
+            name: 'showVarianceBadges',
+            config: {
+              type: 'CheckboxControl',
+              label: 'Mostra badge delta % nei valori',
+              renderTrigger: true,
+              default: true,
+              description:
+                'Disegna la pillola colorata con la variazione % dentro le celle numeriche invece della sola colonna separata.',
+              visibility: ({ controls }: { controls: any }) =>
+                isMultiDim({ controls }) &&
+                !isTwoWayPivot({ controls }) &&
+                Boolean(controls?.showVarianceDelta?.value),
+            },
+          },
+        ],
+        [
+          {
+            name: 'showPeriodInMetricLabel',
+            config: {
+              type: 'CheckboxControl',
+              label: 'Mostra intervallo periodo nel nome metrica',
+              renderTrigger: true,
+              default: false,
+              description:
+                'Aggiunge l\'arco temporale della query tra parentesi accanto al titolo della metrica (es. Richieste (set - ott 2026)).',
+            },
+          },
+          {
+            name: 'periodLabelsFromFilters',
+            config: {
+              type: 'CheckboxControl',
+              label: 'Leggi anno e mese da colonne dei filtri',
+              renderTrigger: true,
+              default: false,
+              description:
+                'Ricava i periodi di riferimento e confronto direttamente dalle colonne configurate sotto (es. da viste filtro dashboard).',
+            },
+          },
+        ],
+        [
+          {
+            name: 'periodReferenceYearColumn',
             config: {
               type: 'TextControl',
-              label: t('Titolo delle colonne di confronto'),
-              default: '{periodo}',
+              label: 'Colonna anno corrente (T1)',
               renderTrigger: true,
-              description: t(
-                'Testo tra parentesi nel titolo delle colonne del periodo di confronto. {periodo} diventa il periodo di confronto in mese e anno (es. ott 2025), calcolato dal filtro Calendar; {corrente} il periodo corrente; {offset} lo scarto (es. 1 anno fa). Esempio: "Anno prec. {periodo}". Vuoto equivale a {periodo}.',
-              ),
+              default: 'ANNO_CORRENTE',
+              description:
+                'Colonna del dataset contenente l\'anno del periodo di riferimento. Esempio: ANNO_CORRENTE.',
               visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'multi_dimension' &&
-                controls?.show_calendar_comparison?.value !== false &&
-                controls?.calendar_comparison_mode?.value !== 'row_total',
+                Boolean(controls?.periodLabelsFromFilters?.value),
+            },
+          },
+          {
+            name: 'periodReferenceMonthColumn',
+            config: {
+              type: 'TextControl',
+              label: 'Colonna mese corrente (T1)',
+              renderTrigger: true,
+              default: 'MESE_CORRENTE',
+              description:
+                'Colonna del dataset contenente il mese del periodo di riferimento. Esempio: MESE_CORRENTE.',
+              visibility: ({ controls }: { controls: any }) =>
+                Boolean(controls?.periodLabelsFromFilters?.value),
             },
           },
         ],
         [
           {
-            name: 'idColumn',
+            name: 'periodComparisonYearColumn',
             config: {
-              ...sharedControls.entity,
-              label: t('Node ID Column'),
-              description: t('Column containing the unique identifier of the node.'),
-              validators: [],
+              type: 'TextControl',
+              label: 'Colonna anno confronto (T2)',
+              renderTrigger: true,
+              default: 'ANNO_CONFRONTO',
+              description:
+                'Colonna del dataset contenente l\'anno di confronto. Esempio: ANNO_CONFRONTO.',
               visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'parent_child',
+                Boolean(controls?.periodLabelsFromFilters?.value),
             },
           },
-        ],
-        [
           {
-            name: 'parentIdColumn',
+            name: 'periodComparisonMonthColumn',
             config: {
-              ...sharedControls.entity,
-              label: t('Parent ID Column'),
-              description: t('Column containing the identifier of the parent node.'),
-              validators: [],
+              type: 'TextControl',
+              label: 'Colonna mese confronto (T2)',
+              renderTrigger: true,
+              default: 'MESE_CONFRONTO',
+              description:
+                'Colonna del dataset contenente il mese di confronto. Esempio: MESE_CONFRONTO.',
               visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'parent_child',
+                Boolean(controls?.periodLabelsFromFilters?.value),
             },
           },
         ],
-        [
-          {
-            name: 'labelColumn',
-            config: {
-              ...sharedControls.entity,
-              label: t('Node Label Column (Optional)'),
-              description: t('Column containing the display name for the node.'),
-              validators: [],
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.hierarchyType?.value === 'parent_child',
-            },
-          },
-        ],
-        [
-          {
-            name: 'metrics',
-            config: {
-              ...sharedControls.metrics,
-              label: t('Metrics'),
-              description: t('Metrics to calculate and display for each hierarchy level.'),
-              clearable: true,
-              validators: [],
-            },
-          },
-        ],
-        ['adhoc_filters'],
       ],
     },
     {
-      label: t('Customize'),
-      expanded: true,
+      label: 'Formato dei valori',
+      expanded: false,
+      tabOverride: 'customize',
+      description: 'Formato numerico D3, simbolo valuta, gestione automatica e formato delle durate Time.',
       controlSetRows: [
-        [subsectionHeader(t('Hierarchy & Tree Display Options'))],
         [
           {
-            name: 'initialExpandDepth',
+            name: 'numberFormat',
             config: {
               type: 'SelectControl',
-              label: t('Initial Expand Depth'),
-              default: 1,
+              freeForm: true,
+              label: 'Formato dei numeri',
               renderTrigger: true,
-              choices: [
-                [-1, t('Expand All')],
-                [0, t('Collapse All (Roots only)')],
-                [1, t('Level 1')],
-                [2, t('Level 2')],
-                [3, t('Level 3')],
-                [4, t('Level 4')],
-              ],
-              description: t('Initial depth of tree nodes expanded upon loading.'),
+              default: 'SMART_NUMBER',
+              choices: CUSTOM_D3_FORMAT_OPTIONS || D3_FORMAT_OPTIONS,
+              description:
+                'Stringa di formattazione D3 per le metriche numeriche. Esempi: SMART_NUMBER, ,.0f, .1%, ~s.',
+            },
+          },
+          {
+            name: 'currencySymbol',
+            config: {
+              type: 'TextControl',
+              label: 'Simbolo valuta (prefisso)',
+              renderTrigger: true,
+              default: '',
+              description:
+                'Prefisso aggiunto ai valori numerici formattati (lascia vuoto per nessun simbolo). Esempio: €.',
             },
           },
         ],
         [
           {
-            name: 'valueDisplayMode',
+            name: 'timeDetection',
             config: {
               type: 'SelectControl',
-              label: t('Value Display Mode'),
-              default: 'all',
+              label: 'Metriche Time e durate',
               renderTrigger: true,
+              visibility: showDurationControl('timeDetection', 'auto'),
+              clearable: false,
+              default: 'auto',
               choices: [
-                ['all', t('All Levels (Default)')],
-                ['leaves_only', t('Leaves only')],
-                ['parents_only', t('Parents only (parents / subtotals)')],
+                ['auto', 'Automatico (leggi metriche Time come durate)'],
+                ['off', 'Disattivato (lascia come testo)'],
               ],
-              description: t(
-                'Choose whether to display metric values on all levels, leaf nodes only, or parent totals only.',
-              ),
+              description:
+                'Converte valori hh:mm:ss in secondi per calcolare correttamente medie, differenze e formattazioni. Esempio: Automatico per tempi d\'attesa.',
+            },
+          },
+          {
+            name: 'timeRollup',
+            config: {
+              type: 'SelectControl',
+              label: 'Roll-up durate su padri e totali',
+              renderTrigger: true,
+              visibility: showDurationControl('timeRollup', 'mean'),
+              clearable: false,
+              default: 'mean',
+              choices: [
+                ['mean', 'Media dei nodi figli / celle (consigliato)'],
+                ['general', 'Usa aggregazione generale della tabella'],
+              ],
+              description:
+                'Come combinare le durate Time nei subtotali gerarchici e nel totale generale. Esempio: Media evita di sommare ore d\'attesa tra reparti.',
             },
           },
         ],
+        [
+          {
+            name: 'timeDisplayFormat',
+            config: {
+              type: 'SelectControl',
+              label: 'Formato delle durate',
+              renderTrigger: true,
+              visibility: showDurationControl('timeDisplayFormat', 'auto'),
+              clearable: false,
+              default: 'auto',
+              choices: [
+                ['auto', 'Automatico (mm:ss, oppure h:mm:ss da un\'ora)'],
+                ['hms', 'Ore, minuti e secondi (1:05:30)'],
+                ['ms', 'Minuti e secondi (65:30)'],
+                ['minutes', 'Minuti decimali (65,5 min)'],
+                ['hours', 'Ore decimali (1,09 h)'],
+                ['seconds', 'Secondi (3930 s)'],
+              ],
+              description:
+                'Come scrivere i campi Time in celle, totali e tooltip. Esempio: "1:05:30" oppure "65,5 min".',
+            },
+          },
+          {
+            name: 'timeFractionDigits',
+            config: {
+              type: 'SelectControl',
+              label: 'Decimali delle durate',
+              renderTrigger: true,
+              visibility: showDurationControl('timeFractionDigits', 0),
+              clearable: false,
+              default: 0,
+              choices: [
+                [0, 'Nessuno (0)'],
+                [1, 'Uno (1)'],
+                [2, 'Due (2)'],
+                [3, 'Tre (3)'],
+              ],
+              description:
+                'Cifre decimali mostrate sui secondi (formati orologio) o sui formati decimali. Esempio: 0 scrive 12:54, 2 scrive 12:54.43.',
+            },
+          },
+        ],
+      ],
+    },
+    {
+      label: 'Totali',
+      expanded: false,
+      tabOverride: 'customize',
+      description: 'Visibilità di subtotali e Grand Total, funzione di roll-up, pesi e totali di riga pivot.',
+      controlSetRows: [
         [
           {
             name: 'showSubtotals',
             config: {
               type: 'CheckboxControl',
-              label: t('Show Subtotals / Rollup Rows'),
+              label: 'Mostra subtotali sui nodi padri',
               renderTrigger: true,
               default: true,
-              description: t('Display aggregated metric values on parent nodes.'),
+              description:
+                'Calcola e mostra i valori aggregati sulle righe di livello superiore dell\'albero (es. totale per Dipartimento).',
             },
           },
           {
             name: 'showGrandTotal',
             config: {
               type: 'CheckboxControl',
-              label: t('Show Grand Total Row'),
+              label: 'Mostra riga Grand Total',
               renderTrigger: true,
               default: true,
-              description: t('Display a summary grand total row at the top or bottom.'),
+              description:
+                'Aggiunge la riga riepilogativa complessiva di tutta la gerarchia in cima alla tabella.',
+            },
+          },
+        ],
+        [
+          {
+            name: 'aggregationMode',
+            config: {
+              type: 'SelectControl',
+              label: 'Funzione di aggregazione (roll-up e totali di riga)',
+              default: 'sum',
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                ['sum', 'Somma (cumulativa)'],
+                ['avg', 'Media aritmetica dei figli'],
+                ['min', 'Minimo'],
+                ['max', 'Massimo'],
+                ['weighted_avg', 'Media ponderata (con metrica peso)'],
+              ],
+              description:
+                'Regola con cui aggregare padri, totali generali e totali di riga pivot per metriche standard. Esempio: Media ponderata per prezzi medi o tassi.',
+            },
+          },
+          {
+            name: 'weightColumn',
+            config: {
+              type: 'SelectControl',
+              freeForm: true,
+              clearable: true,
+              label: 'Metrica peso (per media ponderata)',
+              default: '',
+              renderTrigger: true,
+              mapStateToProps: (explore: any) => ({
+                choices: metricNamesOf(explore).map(v => [v, v]),
+              }),
+              description:
+                'Metrica usata come denominatore/peso nei subtotali e totali di riga con "Media ponderata". Esempio: richieste_corr oppure qty.',
+              visibility: ({ controls }: { controls: any }) =>
+                controls?.aggregationMode?.value === 'weighted_avg',
+            },
+          },
+        ],
+        [
+          {
+            name: 'pivotRowTotalsPosition',
+            config: {
+              type: 'SelectControl',
+              label: 'Posizione totali orizzontali di riga (pivot)',
+              default: 'none',
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                ['none', 'Nessuno (nascondi totali di riga)'],
+                ['left', 'A sinistra (prima delle colonne pivot)'],
+                ['right', 'A destra (in fondo alla tabella)'],
+              ],
+              description:
+                'Aggiunge una macro-colonna che aggrega tutte le colonne pivot sulla stessa riga (secondo l\'aggregazione scelta). Esempio: A destra stile Excel.',
+              visibility: hasPivot,
+            },
+          },
+          {
+            name: 'pivotRowTotalsLabel',
+            config: {
+              type: 'TextControl',
+              label: 'Etichetta totali di riga pivot',
+              default: 'Totals',
+              renderTrigger: true,
+              description:
+                'Titolo della macro-colonna dei totali orizzontali. Esempio: Totale Complessivo.',
+              visibility: ({ controls }: { controls: any }) =>
+                hasPivot({ controls }) &&
+                controls?.pivotRowTotalsPosition?.value !== 'none',
+            },
+          },
+        ],
+        [
+          {
+            name: 'showPivotColumnSubtotals',
+            config: {
+              type: 'CheckboxControl',
+              label: 'Mostra subtotali colonna pivot (2 dimensioni)',
+              renderTrigger: true,
+              default: true,
+              description:
+                'Nei pivot a due dimensioni aggiunge la colonna di subtotale alla fine di ogni gruppo del primo livello.',
+              visibility: isTwoWayPivot,
+            },
+          },
+          {
+            name: 'pivotColumnSubtotalLabel',
+            config: {
+              type: 'TextControl',
+              label: 'Etichetta subtotale colonna pivot',
+              default: 'Total',
+              renderTrigger: true,
+              description:
+                'Titolo della colonna subtotale nei pivot a due dimensioni. Esempio: Totale gruppo.',
+              visibility: ({ controls }: { controls: any }) =>
+                isTwoWayPivot({ controls }) &&
+                controls?.showPivotColumnSubtotals?.value !== false,
+            },
+          },
+        ],
+      ],
+    },
+    {
+      label: 'Aspetto',
+      expanded: false,
+      tabOverride: 'customize',
+      description: 'Espansione iniziale, stile righe e colonne, ordinamento, evidenziazioni min/max, tema e sparkline.',
+      controlSetRows: [
+        [
+          {
+            name: 'initialExpandDepth',
+            config: {
+              type: 'SelectControl',
+              label: 'Livelli espansi all\'apertura',
+              default: 1,
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                [-1, 'Espandi tutti i livelli'],
+                [0, 'Chiudi tutto (solo radici)'],
+                [1, 'Livello 1'],
+                [2, 'Livello 2'],
+                [3, 'Livello 3'],
+                [4, 'Livello 4'],
+              ],
+              description:
+                'Profondità iniziale dell\'albero al caricamento della tabella. Esempio: Livello 1.',
+            },
+          },
+          {
+            name: 'valueDisplayMode',
+            config: {
+              type: 'SelectControl',
+              label: 'Livelli su cui mostrare i valori',
+              default: 'all',
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                ['all', 'Tutti i livelli (predefinito)'],
+                ['leaves_only', 'Solo foglie'],
+                ['parents_only', 'Solo padri / subtotali'],
+              ],
+              description:
+                'Decide su quali livelli della gerarchia mostrare le cifre nelle celle. Esempio: Solo foglie per evitare doppie letture su rapporti non sommabili.',
+            },
+          },
+        ],
+        [
+          {
+            name: 'compactMode',
+            config: {
+              type: 'CheckboxControl',
+              label: 'Modalità compatta (spaziatura ridotta)',
+              renderTrigger: true,
+              default: false,
+              description:
+                'Riduce l\'altezza e il padding delle righe per mostrare più dati nello schermo.',
+            },
+          },
+          {
+            name: 'stripedRows',
+            config: {
+              type: 'CheckboxControl',
+              label: 'Righe alternate zebrate',
+              renderTrigger: true,
+              default: true,
+              description:
+                'Alterna una leggera ombreggiatura di sfondo tra una riga e la successiva per facilitare la lettura.',
             },
           },
         ],
@@ -488,167 +864,122 @@ const config: ControlPanelConfig = {
             name: 'stickyHeader',
             config: {
               type: 'CheckboxControl',
-              label: t('Sticky Table Header'),
+              label: 'Intestazione fissa allo scorrimento',
               renderTrigger: true,
               default: true,
-              description: t('Keep column headers fixed while scrolling.'),
+              description:
+                'Mantiene visibili i titoli delle colonne in cima alla tabella quando si scorre verso il basso.',
             },
           },
-        ],
-        [
-          {
-            name: 'enableSearch',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Enable In-Tree Search'),
-              renderTrigger: true,
-              default: true,
-              description: t('Show search bar to filter hierarchy nodes dynamically.'),
-            },
-          },
-          {
-            name: 'compactMode',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Compact Row Padding'),
-              renderTrigger: true,
-              default: false,
-              description: t('Use denser row height for high data density.'),
-            },
-          },
-        ],
-        [
           {
             name: 'wrapHeaderLabels',
             config: {
               type: 'CheckboxControl',
-              label: t('Automatic line wrap (long headers and labels)'),
+              label: 'A capo automatico su intestazioni lunghe',
               renderTrigger: true,
               default: false,
-              description: t(
-                'Long headers and row labels wrap instead of being cut off or widening the table.',
-              ),
+              description:
+                'Permette ai nomi lunghi di andare a capo su più righe invece di troncarli con i puntini.',
             },
           },
+        ],
+        [
           {
             name: 'resizableColumns',
             config: {
               type: 'CheckboxControl',
-              label: t('Resizable columns (drag the header border)'),
+              label: 'Colonne ridimensionabili manualmente',
               renderTrigger: true,
               default: false,
-              description: t(
-                'Widen or narrow each column by dragging the right border of its header; double-click the border to restore it. Widths are kept in the browser.',
-              ),
+              description:
+                'Permette di trascinare il bordo destro delle intestazioni per allargare o stringere le colonne.',
             },
           },
-        ],
-        [
           {
             name: 'reorderColumnsByDrag',
             config: {
               type: 'CheckboxControl',
-              label: t('Drag-to-reorder columns'),
+              label: 'Riordino colonne con trascinamento (tabella piatta)',
               renderTrigger: true,
               default: false,
-              description: t(
-                'Drag the metric headers to change their order, without going through the panel. Applies to tables without pivot columns; the order is kept in the browser.',
-              ),
-            },
-          },
-        ],
-        [
-          {
-            name: 'enableHierarchicalSort',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Enable Hierarchical In-Tree Sorting'),
-              renderTrigger: true,
-              default: true,
-              description: t(
-                'Allow sorting tree nodes within their respective parent branch by clicking metric column headers.',
-              ),
-            },
-          },
-          {
-            name: 'enableExport',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Enable CSV Hierarchy Export'),
-              renderTrigger: true,
-              default: true,
-              description: t(
-                'Show export button to download hierarchy with preserved levels and subtotals.',
-              ),
+              description:
+                'Consente di spostare le colonne trascinando l\'intestazione in modalità tabella piatta (non pivot).',
+              visibility: isFlatLayout,
             },
           },
         ],
         [subsectionDivider()],
-        [subsectionHeader(t('Sorting & Conditional Formatting'))],
+        [subsectionHeader('Ordinamento e formattazione condizionale')],
         [
           {
             name: 'defaultSortColumn',
             config: {
               type: 'SelectControl',
-              label: t('Default Sort Column'),
+              freeForm: true,
+              label: 'Colonna di ordinamento iniziale',
               default: '__hierarchy_tree__',
               renderTrigger: true,
-              freeForm: true,
-              choices: [
-                ['__hierarchy_tree__', t('Hierarchy Category (Name)')],
-              ],
+              choices: [['__hierarchy_tree__', 'Categoria gerarchia (nome)']],
               mapStateToProps: (explore: any) => {
                 const rawMetrics = explore?.controls?.metrics?.value || explore?.controls?.metric?.value || [];
                 const metrics = Array.isArray(rawMetrics) ? rawMetrics : rawMetrics ? [rawMetrics] : [];
                 const names: string[] = metrics.map((m: any) =>
                   typeof m === 'string' ? m : m?.label || m?.metric_name || String(m),
                 );
-                // A current-period metric `x_corr` offers its derived `delta_x_pct` expression.
                 const deltas = names
                   .map(n => n.match(/^(.+)_corr$/)?.[1])
                   .filter(Boolean)
                   .map(b => `delta_${b}_pct`);
                 return {
                   choices: [
-                    ['__hierarchy_tree__', t('Hierarchy Category (Name)')],
-                    ['__tree_level__', t('Tree Level')],
-                    ['__leaf_count__', t('Leaf Count')],
+                    ['__hierarchy_tree__', 'Categoria gerarchia (nome)'],
+                    ['__tree_level__', 'Livello albero'],
+                    ['__leaf_count__', 'Numero foglie'],
                     ...[...names, ...deltas].map(v => [v, v]),
                   ],
                 };
               },
-              description: t(
-                'Hierarchy, structure, metric or delta % key for default sorting.',
-              ),
+              description:
+                'Colonna strutturale o metrica usata per ordinare l\'albero al caricamento. Esempio: Richieste o Categoria gerarchia.',
             },
           },
           {
             name: 'defaultSortOrder',
             config: {
               type: 'SelectControl',
-              label: t('Default Sort Order'),
+              label: 'Direzione ordinamento iniziale',
               default: 'none',
+              clearable: false,
               renderTrigger: true,
               choices: [
-                ['none', t('Query Order (None)')],
-                ['asc', t('Ascending / A-Z')],
-                ['desc', t('Descending / Z-A')],
+                ['none', 'Ordine della query (nessuno)'],
+                ['asc', 'Crescente / A-Z'],
+                ['desc', 'Decrescente / Z-A'],
               ],
-              description: t('Initial sort direction on chart load.'),
+              description:
+                'Direzione dell\'ordinamento applicato all\'apertura del grafico.',
             },
           },
+        ],
+        [
           {
             name: 'nullHandling',
             config: {
               type: 'SelectControl',
-              label: t('Empty Values'),
+              label: 'Posizione dei valori vuoti in ordinamento',
               default: 'bottom',
+              clearable: false,
               renderTrigger: true,
               choices: [
-                ['bottom', t('Bottom')],
-                ['top', t('Top')],
-                ['exclude', t('Exclude')],
+                ['bottom', 'Sempre in fondo'],
+                ['top', 'Sempre in cima'],
+                ['exclude', 'Escludi righe vuote durante il sort'],
               ],
+              description:
+                'Dove collocare i nodi senza valore quando si ordina una metrica. Esempio: Sempre in fondo.',
+              visibility: ({ controls }: { controls: any }) =>
+                controls?.enableHierarchicalSort?.value !== false ||
+                (controls?.defaultSortOrder?.value && controls.defaultSortOrder.value !== 'none'),
             },
           },
         ],
@@ -657,37 +988,39 @@ const config: ControlPanelConfig = {
             name: 'minMaxDisplayMode',
             config: {
               type: 'SelectControl',
-              label: t('Min/Max Display Mode'),
+              label: 'Evidenziazione visiva min/max nelle celle',
               default: 'none',
+              clearable: false,
               renderTrigger: true,
               choices: [
-                ['none', t('Disabled')],
-                ['badges', t('Min/Max Pill Badges')],
-                ['heatmap', t('Cell Heatmap Gradient')],
-                ['diverging_heatmap', t('Diverging Heatmap (3-Stop Continuous)')],
-                ['data_bars', t('In-Cell Data Bars')],
-                ['bipolar_data_bars', t('Bipolar Data Bars (Zero-Centered)')],
+                ['none', 'Disattivata'],
+                ['badges', 'Badge MIN / MAX'],
+                ['heatmap', 'Gradiente heatmap di cella'],
+                ['diverging_heatmap', 'Heatmap divergente (3 colori)'],
+                ['data_bars', 'Barre orizzontali nelle celle'],
+                ['bipolar_data_bars', 'Barre bipolari centrate su zero'],
               ],
-              description: t(
-                'Visual formatting style for highlighting minimum and maximum values across columns.',
-              ),
+              description:
+                'Evidenzia i valori minimi e massimi o l\'intensità relativa in ogni colonna numerica. Esempio: Barre orizzontali per confrontare volumi.',
             },
           },
           {
             name: 'minMaxScope',
             config: {
               type: 'SelectControl',
-              label: t('Min/Max Calculation Scope'),
+              label: 'Ambito di calcolo min/max',
               default: 'leaves_only',
+              clearable: false,
               renderTrigger: true,
               choices: [
-                ['leaves_only', t('Leaf Nodes Only (Recommended)')],
-                ['level_aware', t('By Hierarchy Level')],
-                ['all_nodes', t('All Nodes Excl. Grand Total')],
+                ['leaves_only', 'Solo nodi foglia (consigliato)'],
+                ['level_aware', 'Per singolo livello gerarchico'],
+                ['all_nodes', 'Tutti i nodi (escluso Grand Total)'],
               ],
-              description: t(
-                'Scope used to calculate min and max values. Leaf nodes only prevents parent aggregations from distorting scale.',
-              ),
+              description:
+                'Determina quali righe partecipano al calcolo della scala min/max; "Solo nodi foglia" evita che i subtotali falsino i colori.',
+              visibility: ({ controls }: { controls: any }) =>
+                controls?.minMaxDisplayMode?.value && controls?.minMaxDisplayMode?.value !== 'none',
             },
           },
         ],
@@ -696,16 +1029,18 @@ const config: ControlPanelConfig = {
             name: 'heatmapPalette',
             config: {
               type: 'SelectControl',
-              label: t('Diverging Heatmap Palette'),
+              label: 'Palette heatmap divergente',
               default: 'red_white_green',
+              clearable: false,
               renderTrigger: true,
               choices: [
-                ['red_white_green', t('Red - White - Green')],
-                ['red_yellow_green', t('Red - Yellow - Green')],
-                ['blue_white_red', t('Blue - White - Red (Colorblind Safe)')],
-                ['custom', t('Custom Theme Colors')],
+                ['red_white_green', 'Rosso - Bianco - Verde'],
+                ['red_yellow_green', 'Rosso - Giallo - Verde'],
+                ['blue_white_red', 'Blu - Bianco - Rosso (daltonici)'],
+                ['custom', 'Colori personalizzati del tema'],
               ],
-              description: t('Continuous 3-stop color palette for diverging heatmap.'),
+              description:
+                'Scala continua a 3 colori per la modalità "Heatmap divergente". Esempio: Blu - Bianco - Rosso.',
               visibility: ({ controls }: { controls: any }) =>
                 controls?.minMaxDisplayMode?.value === 'diverging_heatmap',
             },
@@ -714,12 +1049,11 @@ const config: ControlPanelConfig = {
             name: 'divergingMidpoint',
             config: {
               type: 'TextControl',
-              label: t('Diverging Midpoint (optional)'),
+              label: 'Punto centrale divergente (opzionale)',
               default: '',
               renderTrigger: true,
-              description: t(
-                'Numeric center value for the neutral color (e.g. 0, 100). If omitted, automatically defaults to 0 (if range spans negative and positive) or the mean of min and max.',
-              ),
+              description:
+                'Valore numerico associato al colore neutro; se vuoto usa 0 (se presenti negativi e positivi) o la media tra min e max. Esempio: 0.',
               visibility: ({ controls }: { controls: any }) =>
                 controls?.minMaxDisplayMode?.value === 'diverging_heatmap',
             },
@@ -729,505 +1063,129 @@ const config: ControlPanelConfig = {
           {
             name: 'conditionalFormatting',
             config: {
-              type: ArrayControl,
-              label: t('Conditional Formatting Rules'),
+              type: ArrayControl as any,
+              label: 'Regole di formattazione condizionale',
               default: [],
               renderTrigger: true,
-              description: t(
-                'JSON rules, e.g. [{"metric": "revenue", "operator": ">", "targetValue": 100, "priority": 1, "scope": "cell"}]. ' +
-                  'Operators < <= == >= > between (targetValue2) regex; scope cell, row, column (pivot value). ' +
-                  'Priority 1 wins (green, 2 amber, 3+ red).',
-              ),
+              description:
+                'Elenco JSON di soglie personalizzate per colorare o aggiungere icone a celle e righe. Esempio: [{"metric":"attesa","operator":">","targetValue":30,"bgHex":"#fee2e2"}].',
             },
           },
         ],
         [subsectionDivider()],
-        [subsectionHeader(t('Formatting & Aesthetics'))],
-        [
-          {
-            name: 'numberFormat',
-            config: {
-              type: 'SelectControl',
-              freeForm: true,
-              label: t('Number Format'),
-              renderTrigger: true,
-              default: 'SMART_NUMBER',
-              choices: CUSTOM_D3_FORMAT_OPTIONS || D3_FORMAT_OPTIONS,
-              description: t('D3 format string for numerical metric values.'),
-            },
-          },
-        ],
-        [
-          {
-            name: 'timeDetection',
-            config: {
-              type: 'SelectControl',
-              label: t('Time and duration metrics'),
-              renderTrigger: true,
-              visibility: hasTimeMetric,
-              clearable: false,
-              default: 'auto',
-              choices: [
-                ['auto', t('Automatic (read Time metrics as durations)')],
-                ['off', t('Off (leave them as text)')],
-              ],
-              description: t(
-                'A metric of type Time (hh:mm:ss, for example an average waiting time) arrives as text. Automatic reads it as a number of seconds and shows cells, totals, comparison and differences as durations. Only metric columns are read, never the dimensions.',
-              ),
-            },
-          },
-        ],
-        [
-          {
-            name: 'timeDisplayFormat',
-            config: {
-              type: 'SelectControl',
-              label: t('Duration format'),
-              renderTrigger: true,
-              visibility: hasTimeMetric,
-              clearable: false,
-              default: 'auto',
-              choices: [
-                ['auto', t('Automatic (mm:ss, or h:mm:ss from one hour)')],
-                ['hms', t('Hours, minutes, seconds (1:05:30)')],
-                ['ms', t('Minutes and seconds (65:30)')],
-                ['minutes', t('Decimal minutes (65.5 min)')],
-                ['hours', t('Decimal hours (1.09 h)')],
-                ['seconds', t('Seconds (3930 s)')],
-              ],
-              description: t(
-                'How Time metrics are written. It does not change the number format above, which keeps applying to every other metric. Conditional formatting rules and goals on a Time metric are written in seconds.',
-              ),
-            },
-          },
-          {
-            name: 'timeFractionDigits',
-            config: {
-              type: 'SelectControl',
-              label: t('Duration decimals'),
-              renderTrigger: true,
-              visibility: hasTimeMetric,
-              clearable: false,
-              default: 0,
-              choices: [
-                [0, t('None')],
-                [1, t('One')],
-                [2, t('Two')],
-                [3, t('Three')],
-              ],
-              description: t('Digits after the comma in the seconds (clock formats) or in the value (decimal formats). Example: 0 writes 12:54, 3 writes 12:54.425.'),
-            },
-          },
-        ],
-        [
-          {
-            name: 'timeRollup',
-            config: {
-              type: 'SelectControl',
-              label: t('Time metrics in parent rows and totals'),
-              renderTrigger: true,
-              visibility: hasTimeMetric,
-              clearable: false,
-              default: 'mean',
-              choices: [
-                ['mean', t('Average (a sum of waiting times means nothing)')],
-                ['general', t('Like the other metrics (Rollup Aggregation Function)')],
-              ],
-              description: t(
-                'How a parent row, the grand total and the pivot row totals combine the durations of their children. Average uses the Weight Metric when the rollup is Weighted Average, the plain average otherwise.',
-              ),
-            },
-          },
-        ],
-        [
-          {
-            name: 'currencySymbol',
-            config: {
-              type: 'TextControl',
-              label: t('Currency Symbol Prefix'),
-              renderTrigger: true,
-              default: '',
-              description: t('Optional prefix (e.g. €, $, £) for metrics.'),
-            },
-          },
-        ],
-        [
-          {
-            name: 'stripedRows',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Striped Alternating Rows'),
-              renderTrigger: true,
-              default: true,
-              description: t('Alternating background color for easier reading.'),
-            },
-          },
-        ],
-        [subsectionHeader(t('Theme & Palette'))],
+        [subsectionHeader('Tema, colori e sparkline')],
         [
           {
             name: 'themeProfile',
             config: {
               type: 'SelectControl',
-              label: t('Palette'),
-              renderTrigger: true,
+              label: 'Tema colori',
               default: 'standard',
-              choices: [
-                ['standard', t('Standard (teal)')],
-                ['colorblind', t('Colorblind safe (blue)')],
-                ['stratum-warm', t('Stratum warm (sunset)')],
-                ['stratum-cool', t('Stratum cool (emerald)')],
-                ['custom', t('Custom colors')],
-              ],
-              description: t('Colors of the min/max badges, heatmap and data bars.'),
-            },
-          },
-        ],
-        [customHexControl('customPositiveHex', t('Positive / MAX badge'))],
-        [customHexControl('customNegativeHex', t('Negative / MIN badge'))],
-        [customHexControl('customNeutralHex', t('Neutral / data bars'))],
-      ],
-    },
-    {
-      label: t('Comparison & Analysis'),
-      expanded: false,
-      controlSetRows: [
-        [subsectionHeader(t('Time Comparison & Period-over-Period Variance'))],
-        [
-          {
-            name: 'showVarianceDelta',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Enable Period Delta Badges (Δ %)'),
-              renderTrigger: true,
-              default: false,
-              description: t(
-                'Display period-over-period growth or variance delta badges next to numeric metric values.',
-              ),
-            },
-          },
-          {
-            name: 'showVarianceBadges',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Show the Δ % badges next to the values (Δ % labels)'),
-              renderTrigger: true,
-              default: true,
-              description: t(
-                'When off, the variance stays in the Δ % columns only and absolute values such as counts carry no percent sign.',
-              ),
-              visibility: isComparisonVisible,
-            },
-          },
-          {
-            name: 'showPeriodInMetricLabel',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Show the period next to each metric (Arco temporale)'),
-              renderTrigger: true,
-              default: false,
-              description: t(
-                'Writes next to every metric name the span it covers, and next to the comparison and delta columns what they are measured against.',
-              ),
-            },
-          },
-          {
-            name: 'periodLabelsFromFilters',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Reference and comparison period in the headers'),
-              renderTrigger: true,
-              default: false,
-              description: t(
-                'Adds the reference month to the headers of the current values, the comparison month to the comparison values and to the deltas, for example "Requests (Current) · Oct 2026". The periods are the ones the query really runs on, so they follow the dashboard filters and, when none is applied, the dataset defaults. Requires a dataset with year and month columns for the period.',
-              ),
-            },
-          },
-          {
-            name: 'periodReferenceYearColumn',
-            config: {
-              type: 'TextControl',
-              label: t('Reference year column'),
-              renderTrigger: true,
-              default: 'ANNO_CORRENTE',
-              description: t('Dataset column with this part of the period; only applies when the period in the headers is on.'),
-              visibility: ({ controls }: { controls: any }) => Boolean(controls?.periodLabelsFromFilters?.value),
-            },
-          },
-          {
-            name: 'periodReferenceMonthColumn',
-            config: {
-              type: 'TextControl',
-              label: t('Reference month column'),
-              renderTrigger: true,
-              default: 'MESE_CORRENTE',
-              description: t('Dataset column with this part of the period; only applies when the period in the headers is on.'),
-              visibility: ({ controls }: { controls: any }) => Boolean(controls?.periodLabelsFromFilters?.value),
-            },
-          },
-          {
-            name: 'periodComparisonYearColumn',
-            config: {
-              type: 'TextControl',
-              label: t('Comparison year column'),
-              renderTrigger: true,
-              default: 'ANNO_CONFRONTO',
-              description: t('Dataset column with this part of the period; only applies when the period in the headers is on.'),
-              visibility: ({ controls }: { controls: any }) => Boolean(controls?.periodLabelsFromFilters?.value),
-            },
-          },
-          {
-            name: 'periodComparisonMonthColumn',
-            config: {
-              type: 'TextControl',
-              label: t('Comparison month column'),
-              renderTrigger: true,
-              default: 'MESE_CONFRONTO',
-              description: t('Dataset column with this part of the period; only applies when the period in the headers is on.'),
-              visibility: ({ controls }: { controls: any }) => Boolean(controls?.periodLabelsFromFilters?.value),
-            },
-          },
-          {
-            name: 'timeGrain',
-            config: {
-              type: 'SelectControl',
-              label: t('Time Comparison Granularity'),
-              default: 'year',
+              clearable: false,
               renderTrigger: true,
               choices: [
-                ['auto', t('✨ Auto (Detect from data)')],
-                ['day', t('📅 Day (DoD - Day-over-Day)')],
-                ['week', t('📆 Week (WoW - Week-over-Week)')],
-                ['month', t('🗓️ Month (MoM - Month-over-Month)')],
-                ['quarter', t('📊 Quarter (QoQ - Quarter-over-Quarter)')],
-                ['year', t('📈 Year (YoY - Year-over-Year)')],
+                ['standard', 'Standard (verde acqua)'],
+                ['colorblind', 'Adatto ai daltonici (blu)'],
+                ['stratum-warm', 'Stratum caldo (tramonto)'],
+                ['stratum-cool', 'Stratum freddo (smeraldo)'],
+                ['custom', 'Colori personalizzati (#RRGGBB)'],
               ],
-              description: t(
-                'Period length for the deltas. Periods come from the pivot column values (YYYY, YYYY-Qn, YYYY-MM, YYYY-MM-DD, timestamps).',
-              ),
-              visibility: isComparisonVisible,
+              description:
+                'Palette cromatica usata per badge min/max, heatmap e data bar. Esempio: Adatto ai daltonici.',
             },
           },
         ],
         [
-          {
-            name: 'referencePeriod',
-            config: {
-              type: 'SelectControl',
-              label: t('Periodo di riferimento'),
-              default: 'current',
-              renderTrigger: true,
-              choices: [
-                ['current', t('Periodo attivo corrente')],
-                ['previous', t('Periodo completo precedente')],
-                ['ytd', t('Anno in corso (YTD)')],
-              ],
-              description: t(
-                'Baseline of the latest period: itself (no delta), the previous period, or the year-to-date average.',
-              ),
-              visibility: (state: { controls: any }) =>
-                isComparisonVisible(state) &&
-                (state.controls?.comparisonType?.value ?? 'prev_period') === 'prev_period',
-            },
-          },
-          {
-            name: 'comparisonType',
-            config: {
-              type: 'SelectControl',
-              label: t('Base di confronto'),
-              default: 'prev_period',
-              renderTrigger: true,
-              choices: [
-                ['prev_period', t('Periodo immediatamente precedente (DoD / WoW / MoM / YoY)')],
-                ['prev_year_same_period', t('Stesso periodo dell\'anno precedente')],
-                ['budget_target', t('Budget / obiettivo (target pianificato)')],
-              ],
-              description: t(
-                'Baseline for the latest period delta. Budget / Target uses the matching Metric Goals target.',
-              ),
-              visibility: isComparisonVisible,
-            },
-          },
+          customHexControl('customPositiveHex', 'Colore positivo / MAX', '#059669'),
+          customHexControl('customNegativeHex', 'Colore negativo / MIN', '#dc2626'),
         ],
-        [subsectionDivider()],
-        [subsectionHeader(t('Goals (optional)'))],
-        [
-          {
-            name: 'goals',
-            config: {
-              type: 'TextAreaControl',
-              language: 'json',
-              label: t('Metric Goals'),
-              default: '',
-              renderTrigger: true,
-              description: t(
-                'JSON list of per-metric targets, e.g. [{"metricKey": "revenue", "target": 1000, "direction": "higher_is_better"}]. ' +
-                  'direction is "higher_is_better" (default) or "lower_is_better". Each matching metric cell shows its ' +
-                  'deviation from the target and a status: achieved (>= 100% attainment), on track (>= 90%), at risk (>= 75%) or missed.',
-              ),
-            },
-          },
-        ],
-        [subsectionDivider()],
-        [subsectionHeader(t('Metric Semantics (optional)'))],
-        [
-          {
-            name: 'metricDefinitions',
-            config: {
-              type: 'TextAreaControl',
-              language: 'json',
-              label: t('Metric Definitions'),
-              default: '',
-              renderTrigger: true,
-              description: t(
-                'JSON list that states what each metric means, overriding the name-based guesses. Types: sum, mean (optional weight), ' +
-                  'distinct_count (entityDimension), ratio (numerator, denominator, scale: parents and totals are a ratio of sums), ' +
-                  'delta_pct (current, baseline), diff (current, baseline: exact node-level difference, also on parents and totals) ' +
-                  'and none (empty on parent rows). Optional format (integer, decimal, percent, duration in seconds, ' +
-                  'days, currency), decimals and polarity (higher_is_better or lower_is_better, used for the colour of deltas). ' +
-                  'Example: [{"metric": "pct_in_soglia", "type": "ratio", "numerator": "entro_soglia", "denominator": "prenotazioni", "scale": 100, "format": "percent"}]',
-              ),
-            },
-          },
-        ],
-        [subsectionDivider()],
-        [subsectionHeader(t('Table Calculations (optional)'))],
-        [
-          {
-            name: 'tableCalculations',
-            config: {
-              type: 'TextAreaControl',
-              language: 'json',
-              label: t('Table Calculations & Measure Modifiers'),
-              default: '',
-              renderTrigger: true,
-              description: t(
-                'JSON list of table calculations and measure modifiers. Supported types: pct_of_total, pct_of_parent, running_total, diff_from_previous, diff_from_previous_pct, rank. ' +
-                  'Example: [{"metric": "sales", "type": "pct_of_parent", "display": "companion_column"}]',
-              ),
-            },
-          },
-        ],
-        [subsectionDivider()],
-        [subsectionHeader(t('Privacy (small numbers)'))],
-        [
-          {
-            name: 'suppressionThreshold',
-            config: {
-              type: 'TextControl',
-              isInt: true,
-              label: t('Suppress Counts Below'),
-              default: 0,
-              renderTrigger: true,
-              description: t(
-                'Hides the counts from 1 up to this value minus 1 (0 turns it off; 5 or 10 are usual for published health data). ' +
-                  'Ratios and deltas built on a hidden count are hidden too, and the hidden value never reaches sorting, colours or the CSV export.',
-              ),
-            },
-          },
-        ],
-        [
-          {
-            name: 'suppressionMetrics',
-            config: {
-              type: 'TextControl',
-              label: t('Metrics To Suppress'),
-              default: '',
-              renderTrigger: true,
-              description: t('Comma separated count metrics subject to suppression, e.g. casi, ricoveri.'),
-              visibility: ({ controls }: { controls: any }) => Number(controls?.suppressionThreshold?.value) > 0,
-            },
-          },
-        ],
-        [
-          {
-            name: 'complementarySuppression',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Complementary Suppression'),
-              default: true,
-              renderTrigger: true,
-              description: t(
-                'Also hides the smallest visible sibling of a lone hidden cell, so the hidden value cannot be recovered by subtracting from the parent total.',
-              ),
-              visibility: ({ controls }: { controls: any }) => Number(controls?.suppressionThreshold?.value) > 0,
-            },
-          },
-          {
-            name: 'suppressionLabel',
-            config: {
-              type: 'TextControl',
-              label: t('Suppressed Cell Label'),
-              default: '<{k}',
-              renderTrigger: true,
-              description: t('Text shown in place of a hidden value; {k} is replaced by the threshold.'),
-              visibility: ({ controls }: { controls: any }) => Number(controls?.suppressionThreshold?.value) > 0,
-            },
-          },
-        ],
-        [subsectionDivider()],
-        [subsectionHeader(t('Trend (Sparklines)'))],
+        [customHexControl('customNeutralHex', 'Colore neutro / data bar', '#0284c7')],
         [
           {
             name: 'showSparklines',
             config: {
               type: 'CheckboxControl',
-              label: t('Show Trend Sparklines'),
+              label: 'Mostra mini-grafici sparkline (pivot singolo)',
               default: false,
               renderTrigger: true,
-              description: t(
-                'With exactly one pivot column (the periods), adds a Trend column per metric with a line over the periods in chronological order.',
-              ),
+              description:
+                'Aggiunge una colonna Trend con l\'andamento temporale di ciascuna riga lungo le colonne pivot.',
+              visibility: isSinglePivot,
             },
           },
           {
             name: 'sparklineMetrics',
             config: {
-              type: 'TextControl',
-              label: t('Sparkline Metrics'),
-              default: '',
-              renderTrigger: true,
-              description: t('Comma separated metrics that get a trend column; empty means every metric.'),
-              visibility: ({ controls }: { controls: any }) => Boolean(controls?.showSparklines?.value),
-            },
-          },
-        ],
-        [subsectionDivider()],
-        [subsectionHeader(t('Advanced Rollup Calculations'))],
-        [
-          {
-            name: 'aggregationMode',
-            config: {
               type: 'SelectControl',
-              label: t('Rollup Aggregation Function'),
-              default: 'sum',
-              renderTrigger: false,
-              choices: [
-                ['sum', t('SUM (Add Subtotals)')],
-                ['avg', t('AVG (Mean of Children)')],
-                ['min', t('MIN (Minimum Value)')],
-                ['max', t('MAX (Maximum Value)')],
-                ['weighted_avg', t('Weighted Average / Ratio')],
-              ],
-              description: t('Default aggregation algorithm for calculating intermediate parent node subtotals.'),
+              freeForm: true,
+              multi: true,
+              clearable: true,
+              label: 'Metriche con sparkline (vuoto = tutte)',
+              default: [],
+              renderTrigger: true,
+              mapStateToProps: (explore: any) => ({
+                choices: metricNamesOf(explore).map(v => [v, v]),
+              }),
+              description:
+                'Sceglie su quali metriche generare il mini-grafico sparkline; lascia vuoto per mostrarle tutte. Esempio: Richieste.',
+              visibility: ({ controls }: { controls: any }) =>
+                isSinglePivot({ controls }) && Boolean(controls?.showSparklines?.value),
+            },
+          },
+        ],
+      ],
+    },
+    {
+      label: 'Interazione',
+      expanded: false,
+      tabOverride: 'customize',
+      description: 'Ricerca, ordinamento interattivo, esportazione CSV, menu contestuale, cross-filter e simulazione What-If.',
+      controlSetRows: [
+        [
+          {
+            name: 'enableSearch',
+            config: {
+              type: 'CheckboxControl',
+              label: 'Mostra barra di ricerca nell\'albero',
+              renderTrigger: true,
+              default: true,
+              description:
+                'Consente all\'utente finale di cercare rapidamente un nodo mantenendo visibili i suoi antenati.',
+            },
+          },
+          {
+            name: 'enableHierarchicalSort',
+            config: {
+              type: 'CheckboxControl',
+              label: 'Ordinamento cliccando le intestazioni',
+              renderTrigger: true,
+              default: true,
+              description:
+                'Abilita il clic sulle intestazioni di colonna per ordinare ogni livello dell\'albero in modo gerarchico.',
             },
           },
         ],
         [
           {
-            name: 'weightColumn',
+            name: 'enableExport',
             config: {
-              type: 'TextControl',
-              label: t('Weight Metric'),
-              default: '',
+              type: 'CheckboxControl',
+              label: 'Abilita esportazione CSV gerarchica',
               renderTrigger: true,
-              description: t(
-                'Metric label used as weight (it must be one of the query metrics). Overrides the automatic volume weights; zero total weight falls back to the plain average.',
-              ),
-              visibility: ({ controls }: { controls: any }) => {
-                const aggregationMode = controls?.aggregationMode?.value;
-                return aggregationMode === 'weighted_avg';
-              },
+              default: true,
+              description:
+                'Mostra il pulsante Export CSV per scaricare la tabella completa di livelli, subtotali e totali.',
+            },
+          },
+          {
+            name: 'enableContextMenu',
+            config: {
+              type: 'CheckboxControl',
+              label: 'Abilita menu contestuale su clic destro',
+              renderTrigger: true,
+              default: true,
+              description:
+                'Al tasto destro su una cella apre le azioni di drill-to-detail, copia valore e filtro rapido.',
             },
           },
         ],
@@ -1236,58 +1194,169 @@ const config: ControlPanelConfig = {
             name: 'emit_filter',
             config: {
               type: 'CheckboxControl',
-              label: t('Emit Dashboard Cross-Filters'),
+              label: 'Emetti filtri cross-filter in dashboard',
               renderTrigger: true,
               default: true,
-              description: t(
-                'Broadcast interactive cross-filters to other charts in the dashboard when clicking on tree nodes or dimension values.',
-              ),
+              description:
+                'Cliccando una riga gerarchica filtra tutti gli altri grafici della dashboard collegati alla stessa dimensione.',
             },
           },
           {
             name: 'crossFilterAppliesToSelf',
             config: {
               type: 'CheckboxControl',
-              label: t('Also filter this table'),
+              label: 'Applica il filtro anche a questa tabella',
               renderTrigger: true,
               default: false,
-              description: t(
-                'When a row is selected, the cross-filter also applies to the table itself, which then shows only the selection (with the totals recalculated). Clearing the selection restores everything.',
-              ),
-              visibility: ({ controls }: { controls: any }) => controls?.emit_filter?.value !== false,
+              description:
+                'Se attivo restringe i nodi della tabella stessa al ramo selezionato; altrimenti evidenzia solo la riga selezionata.',
+              visibility: ({ controls }: { controls: any }) =>
+                controls?.emit_filter?.value !== false,
             },
           },
+        ],
+        [
           {
-            name: 'enableContextMenu',
+            name: 'enableWhatIf',
             config: {
               type: 'CheckboxControl',
-              label: t('Enable Context Menu'),
+              label: 'Abilita barra di simulazione What-If',
               renderTrigger: true,
-              default: true,
-              description: t(
-                'Show contextual menu on right click for drill to detail, drill by, and cross-filtering actions.',
-              ),
+              default: false,
+              description:
+                'Mostra una barra interattiva sopra la tabella per simulare variazioni percentuali sulle metriche (es. +10% accessi) con ricalcolo di subtotali, medie ponderate e rapporti.',
             },
           },
         ],
       ],
     },
     {
-      label: t('Performance & Limits'),
+      label: 'Avanzate',
       expanded: false,
+      tabOverride: 'customize',
+      description: 'Definizioni metriche, calcoli tabellari, obiettivi, oscuramento privacy e limiti di rendering.',
       controlSetRows: [
-        ['row_limit'],
+        [subsectionHeader('Definizioni semantiche, calcoli e obiettivi (JSON)')],
+        [
+          {
+            name: 'metricDefinitions',
+            config: {
+              type: 'TextAreaControl',
+              language: 'json',
+              label: 'Definizioni semantiche metriche',
+              default: '',
+              renderTrigger: true,
+              description:
+                'Array JSON che specifica il significato delle metriche (sum, mean, ratio, delta_pct, diff) e la polarità (higher_is_better / lower_is_better). Esempio: [{"metric":"tasso","type":"ratio","numerator":"num","denominator":"den"}].',
+            },
+          },
+        ],
+        [
+          {
+            name: 'tableCalculations',
+            config: {
+              type: 'TextAreaControl',
+              language: 'json',
+              label: 'Calcoli tabellari e colonne derivate',
+              default: '',
+              renderTrigger: true,
+              description:
+                'Array JSON per aggiungere colonne calcolate lato client (% sul totale, % sul padre, ranking, delta dal totale). Esempio: [{"type":"pct_of_total","metric":"ricavi"}].',
+            },
+          },
+        ],
+        [
+          {
+            name: 'goals',
+            config: {
+              type: 'TextAreaControl',
+              language: 'json',
+              label: 'Obiettivi e target per metrica',
+              default: '',
+              renderTrigger: true,
+              description:
+                'Array JSON di target per ciascuna metrica per mostrare scostamento dall\'obiettivo e badge raggiunto/non raggiunto. Esempio: [{"metric":"accessi","target":1000}].',
+            },
+          },
+        ],
+        [subsectionDivider()],
+        [subsectionHeader('Oscuramento privacy per piccoli numeri')],
+        [
+          {
+            name: 'suppressionThreshold',
+            config: {
+              type: 'TextControl',
+              isInt: true,
+              label: 'Oscura conteggi inferiori a (0 = disattivato)',
+              default: 0,
+              renderTrigger: true,
+              description:
+                'Sostituisce con un segnaposto i valori strettamente positivi minori della soglia per tutela privacy (es. 5 oscura da 1 a 4).',
+            },
+          },
+          {
+            name: 'suppressionLabel',
+            config: {
+              type: 'TextControl',
+              label: 'Testo celle oscurate',
+              default: '<{k}',
+              renderTrigger: true,
+              description:
+                'Segnaposto mostrato nelle celle oscurate; {k} viene sostituito con la soglia configurata. Esempio: "<5" oppure "***".',
+              visibility: ({ controls }: { controls: any }) =>
+                Number(controls?.suppressionThreshold?.value) > 0,
+            },
+          },
+        ],
+        [
+          {
+            name: 'suppressionMetrics',
+            config: {
+              type: 'SelectControl',
+              freeForm: true,
+              multi: true,
+              clearable: true,
+              label: 'Metriche da oscurare (vuoto = tutte)',
+              default: [],
+              renderTrigger: true,
+              mapStateToProps: (explore: any) => ({
+                choices: metricNamesOf(explore).map(v => [v, v]),
+              }),
+              description:
+                'Seleziona le sole metriche soggette a oscuramento; lascia vuoto per applicarlo a tutte. Esempio: Pazienti.',
+              visibility: ({ controls }: { controls: any }) =>
+                Number(controls?.suppressionThreshold?.value) > 0,
+            },
+          },
+          {
+            name: 'complementarySuppression',
+            config: {
+              type: 'CheckboxControl',
+              label: 'Oscuramento complementare anti-ricostruzione',
+              default: true,
+              renderTrigger: true,
+              description:
+                'Oscura automaticamente la seconda cella più piccola di uno stesso gruppo se solo un figlio era oscurato (impedisce di ricavarlo per differenza dal totale).',
+              visibility: ({ controls }: { controls: any }) =>
+                Number(controls?.suppressionThreshold?.value) > 0,
+            },
+          },
+        ],
+        [subsectionDivider()],
+        [subsectionHeader('Prestazioni, virtualizzazione e limiti Top N')],
         [
           {
             name: 'pageSize',
             config: {
               type: 'SliderControl',
-              label: t('Page Size'),
+              label: 'Dimensione finestra (righe visibili)',
               default: 100,
               min: 50,
               max: 2000,
               step: 50,
               renderTrigger: true,
+              description:
+                'Numero massimo di righe rese contemporaneamente nel DOM quando la virtualizzazione è attiva. Esempio: 100.',
             },
           },
           {
@@ -1295,9 +1364,11 @@ const config: ControlPanelConfig = {
             config: {
               type: 'TextControl',
               isInt: true,
-              label: t('Virtualize Above Rows'),
+              label: 'Attiva virtualizzazione oltre N righe',
               default: 500,
               renderTrigger: true,
+              description:
+                'Soglia di righe visibili oltre cui la tabella usa lo scrolling virtuale per restare fluida. Esempio: 500.',
             },
           },
         ],
@@ -1307,14 +1378,11 @@ const config: ControlPanelConfig = {
             config: {
               type: 'TextAreaControl',
               language: 'json',
-              label: t('Dimension Limits & Top N (optional)'),
+              label: 'Limiti Top N per dimensione (opzionale)',
               default: '',
               renderTrigger: true,
-              description: t(
-                'JSON array of dimension limit rules per hierarchy level or dimension name. ' +
-                  'Limits the visible branches to the Top N (or Bottom N) and collapses the rest into a synthetic "Others" row with exact metric sum. ' +
-                  'Example: [{"level": 1, "limit": 5, "metric": "volume", "mode": "top", "othersLabel": "Altri ({k})"}]',
-              ),
+              description:
+                'Array JSON per mostrare solo i primi N elementi per livello gerarchico raggruppando il resto in "Altro". Esempio: [{"dimension":"reparto","limit":10}].',
             },
           },
         ],

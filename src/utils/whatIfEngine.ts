@@ -12,7 +12,7 @@ import {
   computeGrandTotal,
   isDerivedMetric,
 } from './aggregations';
-import { applyMetricDefinitions } from './metricSemantics';
+import { applyMetricDefinitions, normalizeMetricDefinitions } from './metricSemantics';
 
 /**
  * Creates a structural deep clone of an array of TreeNodes.
@@ -222,11 +222,13 @@ export function applyWhatIfScenario(
   dimensions: string[] = [],
   metricDefs?: MetricDefinition[],
   scenarioMetadata?: { id: string; name: string },
+  timeMetrics?: ReadonlySet<string>,
 ): WhatIfResult {
   const baseline = snapshotBaseline(baseTree, baseGrandTotal);
   const simulatedTree = deepCloneTree(baseTree);
+  const safeDefs = normalizeMetricDefinitions(metricDefs);
 
-  applyLeafMultipliers(simulatedTree, adjustments, metricDefs);
+  applyLeafMultipliers(simulatedTree, adjustments, safeDefs);
 
   rollupTreeMetrics(
     simulatedTree,
@@ -234,10 +236,11 @@ export function applyWhatIfScenario(
     aggFunc,
     weightColumn,
     dimensions,
+    timeMetrics,
   );
 
-  if (metricDefs && metricDefs.length > 0) {
-    applyMetricDefinitions(simulatedTree, undefined, metricDefs, dimensions);
+  if (safeDefs.length > 0) {
+    applyMetricDefinitions(simulatedTree, undefined, safeDefs, dimensions);
   }
 
   let simulatedGrandTotal: TreeNode | undefined;
@@ -247,9 +250,10 @@ export function applyWhatIfScenario(
       metricNames,
       aggFunc,
       weightColumn,
+      timeMetrics,
     );
-    if (metricDefs && metricDefs.length > 0) {
-      applyMetricDefinitions(simulatedTree, simulatedGrandTotal, metricDefs, dimensions);
+    if (safeDefs.length > 0) {
+      applyMetricDefinitions(simulatedTree, simulatedGrandTotal, safeDefs, dimensions);
     }
   }
 

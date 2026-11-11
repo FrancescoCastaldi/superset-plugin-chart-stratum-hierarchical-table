@@ -37,6 +37,8 @@ import { getTheme, ResolvedTheme } from '../utils/themes';
 import { useFlatTreeVirtualization } from './useFlatTreeVirtualization';
 import { useCrossFilterSelection } from './useCrossFilterSelection';
 import { useColumnLayout } from './useColumnLayout';
+import { rollupFunction } from '../utils/aggregations';
+import { normalizeMetricDefinitions } from '../utils/metricSemantics';
 import { applyWhatIfScenario, computeWhatIfDelta } from '../utils/whatIfEngine';
 import { createScenarioManager } from '../utils/whatIfScenarioManager';
 import WhatIfToolbar from './WhatIfToolbar';
@@ -572,6 +574,10 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
     theme = DEFAULT_THEME,
     metrics = [],
     enableWhatIf = false,
+    aggregationMode: propAggregationMode,
+    weightColumn: propWeightColumn,
+    metricDefinitions: propMetricDefinitions,
+    timeMetrics: propTimeMetrics,
     whatIfBaseline: externalWhatIfBaseline,
     onWhatIfChange,
     onContextMenu,
@@ -580,6 +586,38 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
     onReorderMetrics,
   } = props;
   const nullHandling = props.formData?.nullHandling;
+
+  const resolvedAggregationMode = useMemo(() => {
+    const raw = propAggregationMode ?? props.formData?.aggregationMode;
+    return raw === 'avg' || raw === 'min' || raw === 'max' || raw === 'count' || raw === 'weighted_avg'
+      ? raw
+      : 'sum';
+  }, [propAggregationMode, props.formData?.aggregationMode]);
+
+  const resolvedWeightColumn = useMemo(() => {
+    if (resolvedAggregationMode !== 'weighted_avg') return '';
+    return String(propWeightColumn ?? props.formData?.weightColumn ?? '').trim();
+  }, [resolvedAggregationMode, propWeightColumn, props.formData?.weightColumn]);
+
+  const resolvedMetricDefinitions = useMemo(
+    () =>
+      normalizeMetricDefinitions(
+        propMetricDefinitions ??
+          props.formData?.metricDefinitions ??
+          (props.formData as any)?.metric_definitions ??
+          (props.formData as any)?.metricDefinitionsJson ??
+          (props.formData as any)?.metric_definitions_json,
+      ),
+    [propMetricDefinitions, props.formData],
+  );
+
+  const resolvedTimeMetrics = useMemo(
+    () =>
+      propTimeMetrics && propTimeMetrics.length > 0
+        ? new Set(propTimeMetrics.map(m => m.toLowerCase()))
+        : undefined,
+    [propTimeMetrics],
+  );
 
   // What-If Simulation State
   const [whatIfAdjustments, setWhatIfAdjustments] = useState<WhatIfAdjustment[]>([]);
@@ -596,13 +634,25 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
       grandTotalNode,
       whatIfAdjustments,
       metrics,
-      props.formData?.aggregationMode || 'sum',
-      props.formData?.weightColumn,
+      rollupFunction(resolvedWeightColumn, resolvedAggregationMode),
+      resolvedWeightColumn,
       dimensions,
-      props.formData?.metricDefinitions,
+      resolvedMetricDefinitions,
       activeScenarioName ? { id: 'active', name: activeScenarioName } : undefined,
+      resolvedTimeMetrics,
     );
-  }, [data, grandTotalNode, whatIfAdjustments, metrics, props.formData, dimensions, activeScenarioName]);
+  }, [
+    data,
+    grandTotalNode,
+    whatIfAdjustments,
+    metrics,
+    resolvedAggregationMode,
+    resolvedWeightColumn,
+    resolvedMetricDefinitions,
+    resolvedTimeMetrics,
+    dimensions,
+    activeScenarioName,
+  ]);
 
   const effectiveTreeData = whatIfResult?.simulatedTree ?? data;
   const effectiveGrandTotalNode = whatIfResult?.simulatedGrandTotal ?? grandTotalNode;
@@ -1278,7 +1328,7 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
       {(enableWhatIf || Boolean(externalWhatIfBaseline)) && (
         <WhatIfToolbar
           metrics={metrics}
-          metricDefinitions={props.formData?.metricDefinitions}
+          metricDefinitions={resolvedMetricDefinitions}
           adjustments={whatIfAdjustments}
           onAdjustmentsChange={handleAdjustmentsChange}
           onReset={handleResetWhatIf}

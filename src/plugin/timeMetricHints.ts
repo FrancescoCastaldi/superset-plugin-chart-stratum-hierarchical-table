@@ -72,3 +72,17 @@ export function hasTimeMetric(props: { controls?: any }): boolean {
     return list.some(metric => isTimeLikeMetric(metric, dataset));
   });
 }
+
+/**
+ * Duration controls appear when a Time metric is selected OR when the saved control
+ * already differs from its default so charts with an explicit setting remain editable.
+ */
+export function showDurationControl(name: string, defaultValue: unknown) {
+  return (props: { controls?: any }): boolean => {
+    const current = props?.controls?.[name]?.value;
+    if (current !== undefined && current !== null && current !== '' && current !== defaultValue) {
+      return true;
+    }
+    return hasTimeMetric(props);
+  };
+}

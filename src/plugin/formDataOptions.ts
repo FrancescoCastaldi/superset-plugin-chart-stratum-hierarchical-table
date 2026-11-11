@@ -350,7 +350,7 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
         : undefined,
     dataBarZeroAxis: Boolean(mergedFormData.dataBarZeroAxis ?? mergedFormData.data_bar_zero_axis),
     enableExport: enableExport ?? enable_export ?? true,
-    showVarianceDelta,
+    showVarianceDelta: Boolean(showVarianceDelta),
     showCalendarComparison:
       mergedFormData.show_calendar_comparison !== false && mergedFormData.showCalendarComparison !== false,
     calendarComparisonMode:

@@ -21,6 +21,7 @@ import {
   ComparisonFormat,
   LEGACY_FLAT_FORMATS,
   buildDeltaColumns,
+  flatComparisonColumns,
   writePairedDeltas,
 } from './pairedComparison';
 import {
@@ -145,65 +146,69 @@ export function buildFlatColumns(
   records?: any[],
   treeData?: any[],
   comparisonFormats: ComparisonFormat[] = LEGACY_FLAT_FORMATS,
+  showCalendarComparison = true,
+  timeMetrics?: ReadonlySet<string>,
 ): ColumnLayout {
   const columns: TableColumn[] = [];
   const metricKeys: string[] = [];
   const pairedKeys: string[] = [];
-  const hasComp = Boolean(records && records.length > 0 && Object.keys(records[0]).some(k => k.includes('__')));
-  const compMap: Record<string, string> = {};
+  const compMap = showCalendarComparison ? flatComparisonColumns(records, metrics) : {};
+  const hasComp = Object.keys(compMap).length > 0;
 
-  if (hasComp && records) {
-    for (const m of metrics) {
-      const k = Object.keys(records[0]).find(key => key.startsWith(m + '__'));
-      if (k) compMap[m] = k;
-    }
-    if (treeData && treeData.length > 0) {
-      function rollupNode(node: any) {
-        if (!node.children || node.children.length === 0) {
-          node.metrics = node.metrics || {};
-          for (const m of metrics) {
-            if (compMap[m]) {
-              const compVal = (node.rawData && node.rawData[compMap[m]] !== undefined) ? Number(node.rawData[compMap[m]]) : 0;
-              node.metrics[m + '___comp'] = compVal;
-              const curVal = Number(node.metrics[m] || 0);
-              const diff = curVal - compVal;
-              const delta = compVal !== 0 ? (diff / compVal) * 100 : 0;
-              node.metrics[m + '___diff'] = diff;
-              node.metrics[m + '___delta'] = delta;
-            }
+  const parseComparisonNumber = (raw: unknown): number | null => {
+    if (raw === null || raw === undefined || raw === '') return null;
+    const n = typeof raw === 'number' ? raw : Number(raw);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  if (hasComp && treeData && treeData.length > 0) {
+    function rollupNode(node: any) {
+      if (!node.children || node.children.length === 0) {
+        node.metrics = node.metrics || {};
+        for (const m of metrics) {
+          if (compMap[m]) {
+            const compVal = node.rawData ? parseComparisonNumber(node.rawData[compMap[m]]) : null;
+            node.metrics[m + '___comp'] = compVal;
           }
-          node.subtotals = Object.assign({}, node.metrics);
-        } else {
-          for (const c of node.children) {
-            rollupNode(c);
-          }
-          node.metrics = node.metrics || {};
-          for (const m of metrics) {
-            if (compMap[m]) {
-              let curSum = 0, compSum = 0;
-              for (const c of node.children) {
-                curSum += Number((c.metrics && c.metrics[m]) || 0);
-                compSum += Number((c.metrics && c.metrics[m + '___comp']) || 0);
-              }
-              // Times are averaged, not added
-              if (isTimeMetricName(m) && node.children.length > 0) {
-                curSum /= node.children.length;
-                compSum /= node.children.length;
-              }
-              node.metrics[m] = curSum;
-              node.metrics[m + '___comp'] = compSum;
-              const diff = curSum - compSum;
-              const delta = compSum !== 0 ? (diff / compSum) * 100 : 0;
-              node.metrics[m + '___diff'] = diff;
-              node.metrics[m + '___delta'] = delta;
-            }
-          }
-          node.subtotals = Object.assign({}, node.metrics);
         }
+        node.subtotals = Object.assign({}, node.metrics);
+      } else {
+        for (const c of node.children) {
+          rollupNode(c);
+        }
+        node.metrics = node.metrics || {};
+        for (const m of metrics) {
+          if (compMap[m]) {
+            // Preserve precomputed parent value (weighted_avg, metricDefinitions, avg/min/max) when already present.
+            if (!(m in node.metrics) || node.metrics[m] === undefined) {
+              const curVals: number[] = [];
+              for (const c of node.children) {
+                const cv = parseComparisonNumber(c.metrics?.[m]);
+                if (cv !== null) curVals.push(cv);
+              }
+              if (curVals.length > 0) {
+                const curSum = curVals.reduce((acc, v) => acc + v, 0);
+                node.metrics[m] = isTimeMetricName(m, timeMetrics) ? curSum / curVals.length : curSum;
+              }
+            }
+            const compVals: number[] = [];
+            for (const c of node.children) {
+              const cv = parseComparisonNumber(c.metrics?.[m + '___comp']);
+              if (cv !== null) compVals.push(cv);
+            }
+            let compVal: number | null = null;
+            if (compVals.length > 0) {
+              const compSum = compVals.reduce((acc, v) => acc + v, 0);
+              compVal = isTimeMetricName(m, timeMetrics) ? compSum / compVals.length : compSum;
+            }
+            node.metrics[m + '___comp'] = compVal;
+          }
+        }
+        node.subtotals = Object.assign({}, node.metrics);
       }
-      for (const root of treeData) {
-        rollupNode(root);
-      }
+    }
+    for (const root of treeData) {
+      rollupNode(root);
     }
   }
 
@@ -237,6 +242,9 @@ export function buildFlatColumns(
         formatter: createMetricFormatter(format, m),
       }, ...deltas);
     } else {
+      if (hasComp && columns.some(col => col.key === m)) {
+        continue;
+      }
       metricKeys.push(m);
       const isDelta = m.includes('delta') || m.includes('diff') || m.endsWith('___delta');
       const isPct = m.includes('pct') || m.includes('%');

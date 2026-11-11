@@ -26,10 +26,25 @@ export const DELTA_SUFFIX: Record<ComparisonFormat, string> = {
 const FORMAT_ORDER: ComparisonFormat[] = ['abs', 'pct', 'pp', 'ratio'];
 
 /** What the flat layout always showed before the formats were selectable. */
-export const LEGACY_FLAT_FORMATS: ComparisonFormat[] = ['abs', 'pct'];
+export const LEGACY_FLAT_FORMATS: ComparisonFormat[] = ['pct'];
 export const DEFAULT_PIVOT_FORMATS: ComparisonFormat[] = ['pct'];
 
 export type CalendarComparisonMode = 'paired' | 'row_total';
+
+/** Maps each base metric to its SQL time-offset column (`${metric}__${offset}`), ignoring synthetic `___` keys. */
+export function flatComparisonColumns(
+  records: Record<string, any>[] | undefined,
+  metrics: string[],
+): Record<string, string> {
+  const compMap: Record<string, string> = {};
+  if (!records || records.length === 0) return compMap;
+  const keys = Object.keys(records[0]);
+  for (const m of metrics) {
+    const k = keys.find(key => key.startsWith(`${m}__`) && !key.startsWith(`${m}___`));
+    if (k) compMap[m] = k;
+  }
+  return compMap;
+}
 
 /**
  * Formats of the selection, in column order and without duplicates. Anything that is not a list

@@ -1,6 +1,6 @@
 import { DataRecord } from '@superset-ui/core';
 import { TreeNode } from '../types';
-import { computeHorizontalRowTotals } from '../utils/aggregations';
+import { computeHorizontalRowTotals, rollupFunction } from '../utils/aggregations';
 import {
   TimeDeltaStrategyConfig,
   computeNativeTimeDelta,
@@ -66,10 +66,12 @@ export function buildMetricLayout(
   records: DataRecord[],
   options: TransformOptions,
   metrics: string[],
+  timeMetrics?: ReadonlySet<string>,
 ): ColumnLayout {
   const format = { numberFormat: options.numberFormat, currencySymbol: options.currencySymbol };
   const { pivotDimensions, pivotRowTotalsPosition, pivotTimeDeltaMode } = options;
   const paired = options.showCalendarComparison && options.calendarComparisonMode === 'paired';
+  const rowTotalAgg = rollupFunction(options.weightColumn, options.aggregationMode);
 
   if (!options.isPivotMode) {
     const flatLayout = buildFlatColumns(
@@ -78,6 +80,8 @@ export function buildMetricLayout(
       records,
       treeData,
       options.comparisonFormats ?? LEGACY_FLAT_FORMATS,
+      options.showCalendarComparison,
+      timeMetrics,
     );
     appendTableCalculationColumns(flatLayout, options.tableCalculations, format, false);
     return flatLayout;
@@ -91,7 +95,15 @@ export function buildMetricLayout(
     const dim2Values = collectDistinctValues(records, pivotDimensions[1]);
 
     if (pivotRowTotalsPosition !== 'none') {
-      computeHorizontalRowTotals(treeData, metrics, displayDim1Values, 'sum', options.dimensions);
+      computeHorizontalRowTotals(
+        treeData,
+        metrics,
+        displayDim1Values,
+        rowTotalAgg,
+        options.dimensions,
+        options.weightColumn,
+        timeMetrics,
+      );
     }
 
     const twoWayLayout = buildMultiPivotColumns({
@@ -142,8 +154,10 @@ export function buildMetricLayout(
       treeData,
       metrics,
       chronologicalPivotValues,
-      'sum',
+      rowTotalAgg,
       options.dimensions,
+      options.weightColumn,
+      timeMetrics,
     );
   }
 
@@ -177,7 +191,7 @@ export function buildMetricLayout(
   if (pairedCells === 0) {
     if (
       options.showCalendarComparison &&
-      computeNativeTimeDelta(treeData, metrics, chronologicalPivotValues)
+      computeNativeTimeDelta(treeData, metrics, chronologicalPivotValues, timeMetrics)
     ) {
       appendPeriodComparisonColumns(
         layout,

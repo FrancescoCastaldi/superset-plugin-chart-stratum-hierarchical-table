@@ -48,6 +48,7 @@ export function buildMultiDimensionTree(
   pivotDimensions: string[] = [],
   weightColumn = '',
   aggregationMode: AggregationFunction = 'sum',
+  timeMetrics?: ReadonlySet<string>,
 ): TreeNode[] {
   if (!records || records.length === 0 || !dimensions || dimensions.length === 0) {
     return [];
@@ -263,6 +264,7 @@ export function buildMultiDimensionTree(
     rollupFunction(weightColumn, aggregationMode),
     weightColumn,
     dimensions,
+    timeMetrics,
   );
   return tree;
 }
@@ -279,6 +281,7 @@ export function buildParentChildTree(
   metrics: string[],
   weightColumn = '',
   aggregationMode: AggregationFunction = 'sum',
+  timeMetrics?: ReadonlySet<string>,
 ): TreeNode[] {
   if (!records || records.length === 0 || !idColumn) {
     return [];
@@ -390,7 +393,14 @@ export function buildParentChildTree(
     }
   }
 
-  rollupTreeMetrics(roots, metrics, rollupFunction(weightColumn, aggregationMode), weightColumn);
+  rollupTreeMetrics(
+    roots,
+    metrics,
+    rollupFunction(weightColumn, aggregationMode),
+    weightColumn,
+    undefined,
+    timeMetrics,
+  );
   return roots;
 }
 

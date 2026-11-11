@@ -472,6 +472,10 @@ export interface HierarchicalTableTransformedProps {
   onClearFilter?: () => void;
   onReorderMetrics?: (metrics: string[]) => void;
   enableWhatIf?: boolean;
+  aggregationMode?: AggregationFunction;
+  weightColumn?: string;
+  metricDefinitions?: MetricDefinition[];
+  timeMetrics?: string[];
   whatIfBaseline?: WhatIfBaseline;
   onWhatIfChange?: (scenario: WhatIfScenario | null) => void;
 }

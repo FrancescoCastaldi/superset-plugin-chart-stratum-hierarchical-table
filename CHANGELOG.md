@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-11
+
+### Fixed
+- **What-If simulation with metric definitions**: `HierarchicalTable` now normalizes `metricDefinitions`, resolves `aggregationMode`, and passes `weightColumn` only for `weighted_avg`, preventing crashes when opening What-If with JSON metric definitions.
+- **Multi-table state isolation**: eliminated module-level mutable state in `timeMetricRegistry.ts` and passed `timeMetrics` explicitly through `rollupTreeMetrics`, `computeGrandTotal`, `computeHorizontalRowTotals`, and `isRateMetric` so What-If scenarios and multiple tables on the same dashboard do not cross-contaminate.
+- **Flat Calendar comparison toggle and `___delta` collision**: flat layout now respects `show_calendar_comparison = false`, and flat Calendar comparison takes explicit precedence over `applyVarianceDelta` so `___delta` columns never collide or duplicate.
+- **Legacy rollup precision**: `columnBuilders.ts` detects comparison columns strictly via `${metric}__`, preserves missing baselines as `null` (`Nuovo` badge instead of `0`), and avoids overwriting precomputed weighted averages or custom metric definition values.
+- **Option alignment**: aligned `calendar_comparison_formats` fallback default (`['pct']`) with the control panel and fixed `formDataOptions.showVarianceDelta` boolean resolution.
+
+### Changed
+- **Behavior change in pivot row totals**: `metricLayout.ts` and `computeHorizontalRowTotals` now evaluate pivot row totals using the configured `aggregationMode` (with cell-paired weights when `weighted_avg`) instead of always summing (`'sum'`). Charts using non-sum aggregations (`avg`, `min`, `max`, `count`, `weighted_avg`) with pivot row totals will now reflect that aggregation.
+- **What-If exposure and client re-render trigger**: exposed `enableWhatIf` in the Explore panel and switched `aggregationMode` to `renderTrigger: true` for instant client-side recalculation.
+- **Italian StratumBar-aligned control panel**: reorganized into 7 Italian sections (`Dati` expanded by default, `Confronto tra periodi`, `Formato dei valori`, `Totali`, `Aspetto`, `Interazione`, `Avanzate`), with progressive disclosure by layout (flat, single pivot, two-way pivot), `SelectControl` pickers for `weightColumn`, `sparklineMetrics`, and `suppressionMetrics`, shared `showDurationControl`, split rows (max 2 controls per row), zero emojis, and full wiring plus default-parity tests.
+
 ## [0.17.1] - 2026-11-11
 
 ### Fixed

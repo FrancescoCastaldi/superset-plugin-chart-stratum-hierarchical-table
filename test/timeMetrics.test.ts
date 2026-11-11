@@ -173,7 +173,10 @@ describe('hierarchical table with Time metrics', () => {
       { sede: 'A', canale: 'Web', ritardo: '00:20:00', [`ritardo__${OFFSET}`]: '00:15:00' },
       { sede: 'B', canale: 'Sportello', ritardo: '00:30:00', [`ritardo__${OFFSET}`]: '00:30:00' },
     ];
-    const props = run({ groupby: ['sede', 'canale'], metrics: ['ritardo'] }, withComparison);
+    const props = run(
+      { groupby: ['sede', 'canale'], metrics: ['ritardo'], calendar_comparison_formats: ['abs', 'pct'] },
+      withComparison,
+    );
 
     it('reads the comparison period as seconds, and averages it in the parents', () => {
       const a = row(props.data, 'A');

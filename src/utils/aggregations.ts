@@ -92,8 +92,8 @@ const isRateMetricByName = memoizeByName(function isRateMetricByName(metricName:
  * Average, duration or rate: rolled up with a weighted average instead of a sum. The metrics that hold
  * times (read from the data, whatever their name) always are.
  */
-export const isRateMetric = (metricName: string): boolean =>
-  isTimeMetricName(metricName) || isRateMetricByName(metricName);
+export const isRateMetric = (metricName: string, timeMetrics?: ReadonlySet<string>): boolean =>
+  isTimeMetricName(metricName, timeMetrics) || isRateMetricByName(metricName);
 
 /**
  * Helper to extract base metric and pivot suffix (e.g. 'delta_richieste_pct___SSN' -> base: 'delta_richieste_pct', pivot: '___SSN')
@@ -753,6 +753,7 @@ export function rollupTreeMetrics(
   aggFunc: AggregationFunction = 'sum',
   weightColumn = '',
   dimensions?: string[],
+  timeMetrics?: ReadonlySet<string>,
 ): void {
   // An explicit weight metric replaces every volume-based weight heuristic below.
   const explicitWeight = aggFunc === 'weighted_avg' ? weightColumn : '';
@@ -777,7 +778,7 @@ export function rollupTreeMetrics(
             aggregatedVal = calculateAggregation(numericValues(node.children, metric), effectiveAgg);
           } else if (explicitWeight) {
             aggregatedVal = explicitWeightedValue(node.children, metric, explicitWeight);
-          } else if (isRateMetric(metric)) {
+          } else if (isRateMetric(metric, timeMetrics)) {
             // For rate/average metrics, compute weighted average using volume if possible
             const { suffix } = splitMetricKey(metric);
             const isConf = metric.toLowerCase().includes('conf') || (metric.toLowerCase().includes('confronto') || metric.toLowerCase().includes('comparison'));
@@ -843,6 +844,7 @@ export function computeGrandTotal(
   metricNames: string[],
   aggFunc: AggregationFunction = 'sum',
   weightColumn = '',
+  timeMetrics?: ReadonlySet<string>,
 ): TreeNode {
   const grandTotalMetrics: Record<string, number | string | null> = {};
   const explicitWeight = aggFunc === 'weighted_avg' ? weightColumn : '';
@@ -856,7 +858,7 @@ export function computeGrandTotal(
       grandTotalMetrics[metric] = calculateAggregation(numericValues(rootNodes, metric), 'sum');
     } else if (explicitWeight) {
       grandTotalMetrics[metric] = explicitWeightedValue(rootNodes, metric, explicitWeight);
-    } else if (isRateMetric(metric)) {
+    } else if (isRateMetric(metric, timeMetrics)) {
       const { suffix } = splitMetricKey(metric);
       const weightKey = metric.toLowerCase().includes('conf')
         ? `richieste_conf${suffix}`
@@ -901,8 +903,10 @@ export function computeHorizontalRowTotals(
   nodes: TreeNode[],
   metrics: string[],
   pivotValues: string[],
-  _aggFunc: AggregationFunction = 'sum',
+  aggFunc: AggregationFunction = 'sum',
   dimensions?: string[],
+  weightColumn = '',
+  timeMetrics?: ReadonlySet<string>,
 ): void {
   if (!nodes || nodes.length === 0 || !metrics || metrics.length === 0 || !pivotValues || pivotValues.length === 0) {
     return;
@@ -922,6 +926,16 @@ export function computeHorizontalRowTotals(
       if (!node.metrics) {
         node.metrics = {};
       }
+
+      const readCellNumber = (metricName: string, pVal: string): number | null => {
+        const compKey = `${metricName}___${pVal}`;
+        const subtotalKey = `${metricName}___${pVal}___SUBTOTAL`;
+        const rawVal =
+          node.metrics[compKey] ??
+          node.metrics[subtotalKey] ??
+          (node.subtotals ? (node.subtotals[compKey] ?? node.subtotals[subtotalKey]) : null);
+        return typeof rawVal === 'number' && Number.isFinite(rawVal) ? rawVal : null;
+      };
 
       for (const m of metrics) {
         if (isDerivedMetric(m)) {
@@ -945,14 +959,8 @@ export function computeHorizontalRowTotals(
           let rowMax = -Infinity;
           let hasDistinctVal = false;
           for (const pVal of pivotValues) {
-            const compKey = `${m}___${pVal}`;
-            const subtotalKey = `${m}___${pVal}___SUBTOTAL`;
-            const rawVal =
-              node.metrics[compKey] ??
-              node.metrics[subtotalKey] ??
-              (node.subtotals ? (node.subtotals[compKey] ?? node.subtotals[subtotalKey]) : null);
-
-            if (typeof rawVal === 'number' && Number.isFinite(rawVal)) {
+            const rawVal = readCellNumber(m, pVal);
+            if (rawVal !== null) {
               if (rawVal > rowMax) rowMax = rawVal;
               hasDistinctVal = true;
             }
@@ -967,42 +975,54 @@ export function computeHorizontalRowTotals(
         }
 
         // Times are not added across the pivot values: the row total is their average
-        if (isTimeMetricName(m)) {
-          const cells: number[] = [];
-          for (const pVal of pivotValues) {
-            const raw =
-              node.metrics[`${m}___${pVal}`] ??
-              node.metrics[`${m}___${pVal}___SUBTOTAL`] ??
-              (node.subtotals ? (node.subtotals[`${m}___${pVal}`] ?? node.subtotals[`${m}___${pVal}___SUBTOTAL`]) : null);
-            if (typeof raw === 'number' && Number.isFinite(raw)) cells.push(raw);
-          }
+        if (isTimeMetricName(m, timeMetrics)) {
+          const cells = pivotValues
+            .map(pVal => readCellNumber(m, pVal))
+            .filter((v): v is number => v !== null);
           const mean = cells.length > 0 ? cells.reduce((a, b) => a + b, 0) / cells.length : null;
           node.metrics[rowTotalKey] = mean;
           if (node.subtotals) node.subtotals[rowTotalKey] = mean;
           continue;
         }
 
-        let rowSum = 0;
-        let hasValue = false;
-
-        for (const pVal of pivotValues) {
-          const compKey = `${m}___${pVal}`;
-          const subtotalKey = `${m}___${pVal}___SUBTOTAL`;
-          const rawVal =
-            node.metrics[compKey] ??
-            node.metrics[subtotalKey] ??
-            (node.subtotals ? (node.subtotals[compKey] ?? node.subtotals[subtotalKey]) : null);
-
-          if (typeof rawVal === 'number' && Number.isFinite(rawVal)) {
-            rowSum += rawVal;
-            hasValue = true;
+        let rowTotalVal: number | null = null;
+        if (aggFunc === 'weighted_avg' && weightColumn) {
+          if (m === weightColumn) {
+            const weights = pivotValues
+              .map(pVal => readCellNumber(m, pVal))
+              .filter((v): v is number => v !== null);
+            rowTotalVal = calculateAggregation(weights, 'sum');
+          } else {
+            let weightedSum = 0;
+            let totalWeight = 0;
+            let unweightedSum = 0;
+            let count = 0;
+            for (const pVal of pivotValues) {
+              const val = readCellNumber(m, pVal);
+              if (val !== null) {
+                const weight = readCellNumber(weightColumn, pVal);
+                if (weight !== null && weight > 0) {
+                  weightedSum += val * weight;
+                  totalWeight += weight;
+                }
+                unweightedSum += val;
+                count += 1;
+              }
+            }
+            if (totalWeight > 0) rowTotalVal = weightedSum / totalWeight;
+            else if (count > 0) rowTotalVal = unweightedSum / count;
           }
+        } else {
+          const values = pivotValues
+            .map(pVal => readCellNumber(m, pVal))
+            .filter((v): v is number => v !== null);
+          rowTotalVal = calculateAggregation(values, aggFunc);
         }
 
-        if (hasValue) {
-          node.metrics[rowTotalKey] = rowSum;
+        if (rowTotalVal !== null) {
+          node.metrics[rowTotalKey] = rowTotalVal;
           if (node.subtotals) {
-            node.subtotals[rowTotalKey] = rowSum;
+            node.subtotals[rowTotalKey] = rowTotalVal;
           }
         } else if (node.metrics[rowTotalKey] === undefined) {
           node.metrics[rowTotalKey] = null;

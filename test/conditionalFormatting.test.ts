@@ -136,13 +136,13 @@ describe('conditionalFormatting regex fallback', () => {
 });
 
 describe('conditionalFormatting control and options', () => {
-  it('exposes the conditionalFormatting ArrayControl in Sorting & Conditional Formatting', () => {
+  it('exposes the conditionalFormatting ArrayControl in Aspetto', () => {
     const customize = controlPanel.controlPanelSections.find(
-      (s: { label: string }) => s.label === 'Customize',
+      (s: { label: string }) => s.label === 'Aspetto',
     );
     const items: unknown[] = customize.controlSetRows.flat();
     const heading = items.findIndex(
-      i => isValidElement(i) && (i.props as any).children === 'Sorting & Conditional Formatting',
+      i => isValidElement(i) && (i.props as any).children === 'Ordinamento e formattazione condizionale',
     );
     const index = items.findIndex(i => (i as any)?.name === 'conditionalFormatting');
     const nextHeading = items.findIndex((i, n) => n > heading && isValidElement(i) && i.type === 'h4');
