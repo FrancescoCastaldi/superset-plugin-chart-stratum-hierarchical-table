@@ -146,6 +146,23 @@ describe('fogli di stile', () => {
     expect(css).toContain('--st-host-bg');
   });
 
+  it('ogni regola è dentro il contenitore del grafico, così non colpisce le classi omonime di Superset', () => {
+    const offenders: string[] = [];
+    const scan = (css: string) => {
+      const clean = css.replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const m of clean.matchAll(/(?:^|\})\s*([^@{}]+)\{/g)) {
+        for (const selector of m[1].split(/,(?![^(]*\))/)) {
+          const trimmed = selector.trim();
+          if (trimmed && !trimmed.startsWith('.superset-hierarchical-table-container') && !/^(from|to|\d+%)$/.test(trimmed)) {
+            offenders.push(trimmed);
+          }
+        }
+      }
+    };
+    files.forEach(scan);
+    expect(offenders).toEqual([]);
+  });
+
   it('il carattere è quello di Superset', () => {
     expect(files[0]).toMatch(/font-family:\s*inherit;/);
   });

@@ -1,5 +1,5 @@
 /* What-If Simulation Toolbar */
-.whatif-toolbar-container {
+.superset-hierarchical-table-container .whatif-toolbar-container {
   background: var(--st-bg-subtle, #f8fafc);
   border-bottom: 2px solid #3b82f6;
   font-family: inherit;
@@ -10,20 +10,20 @@
   user-select: none;
 }
 
-.whatif-header {
+.superset-hierarchical-table-container .whatif-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.whatif-header-left {
+.superset-hierarchical-table-container .whatif-header-left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.whatif-title-btn {
+.superset-hierarchical-table-container .whatif-title-btn {
   background: none;
   border: 1px solid var(--st-border-strong, #cbd5e1);
   border-radius: 6px;
@@ -38,18 +38,18 @@
   transition: background 0.15s, border-color 0.15s;
 }
 
-.whatif-title-btn:hover {
+.superset-hierarchical-table-container .whatif-title-btn:hover {
   background: var(--st-bg-muted, #f1f5f9);
   border-color: var(--st-text-faint, #94a3b8);
 }
 
-.whatif-title-btn.active {
+.superset-hierarchical-table-container .whatif-title-btn.active {
   background: var(--st-tint-blue, #eff6ff);
   border-color: #3b82f6;
   color: var(--st-info, #1d4ed8);
 }
 
-.whatif-badge-active {
+.superset-hierarchical-table-container .whatif-badge-active {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -62,13 +62,13 @@
   font-weight: 600;
 }
 
-.whatif-header-right {
+.superset-hierarchical-table-container .whatif-header-right {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.whatif-btn {
+.superset-hierarchical-table-container .whatif-btn {
   background: var(--st-bg, #ffffff);
   border: 1px solid var(--st-border-strong, #cbd5e1);
   border-radius: 6px;
@@ -83,48 +83,48 @@
   transition: all 0.15s ease;
 }
 
-.whatif-btn:hover {
+.superset-hierarchical-table-container .whatif-btn:hover {
   background: var(--st-bg-subtle, #f8fafc);
   border-color: var(--st-text-faint, #94a3b8);
   color: var(--st-text, #0f172a);
 }
 
-.whatif-btn.whatif-btn-primary {
+.superset-hierarchical-table-container .whatif-btn.whatif-btn-primary {
   background: #3b82f6;
   border-color: #2563eb;
   color: #ffffff;
 }
 
-.whatif-btn.whatif-btn-primary:hover {
+.superset-hierarchical-table-container .whatif-btn.whatif-btn-primary:hover {
   background: #2563eb;
 }
 
-.whatif-btn.whatif-btn-reset {
+.superset-hierarchical-table-container .whatif-btn.whatif-btn-reset {
   color: var(--st-neg, #dc2626);
   border-color: #fecaca;
   background: var(--st-tint-red, #fef2f2);
 }
 
-.whatif-btn.whatif-btn-reset:hover {
+.superset-hierarchical-table-container .whatif-btn.whatif-btn-reset:hover {
   background: #fee2e2;
   border-color: #fca5a5;
 }
 
 /* Expanded panel */
-.whatif-body {
+.superset-hierarchical-table-container .whatif-body {
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--st-border, #e2e8f0);
 }
 
-.whatif-slider-grid {
+.superset-hierarchical-table-container .whatif-slider-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 12px;
   margin-bottom: 12px;
 }
 
-.whatif-slider-row {
+.superset-hierarchical-table-container .whatif-slider-row {
   background: var(--st-bg, #ffffff);
   border: 1px solid var(--st-border, #e2e8f0);
   border-radius: 6px;
@@ -134,13 +134,13 @@
   gap: 6px;
 }
 
-.whatif-slider-header {
+.superset-hierarchical-table-container .whatif-slider-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.whatif-metric-name {
+.superset-hierarchical-table-container .whatif-metric-name {
   font-weight: 600;
   color: var(--st-text, #1e293b);
   font-size: 12px;
@@ -150,35 +150,35 @@
   max-width: 180px;
 }
 
-.whatif-pct-badge {
+.superset-hierarchical-table-container .whatif-pct-badge {
   font-size: 11px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
 }
 
-.whatif-pct-badge.positive {
+.superset-hierarchical-table-container .whatif-pct-badge.positive {
   background: var(--st-tint-green, #ecfdf5);
   color: var(--st-pos, #059669);
 }
 
-.whatif-pct-badge.negative {
+.superset-hierarchical-table-container .whatif-pct-badge.negative {
   background: var(--st-tint-red, #fef2f2);
   color: var(--st-neg, #dc2626);
 }
 
-.whatif-pct-badge.neutral {
+.superset-hierarchical-table-container .whatif-pct-badge.neutral {
   background: var(--st-bg-muted, #f1f5f9);
   color: var(--st-text-muted, #64748b);
 }
 
-.whatif-slider-controls {
+.superset-hierarchical-table-container .whatif-slider-controls {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.whatif-slider-input {
+.superset-hierarchical-table-container .whatif-slider-input {
   flex: 1;
   height: 6px;
   border-radius: 3px;
@@ -188,7 +188,7 @@
   accent-color: #3b82f6;
 }
 
-.whatif-number-input {
+.superset-hierarchical-table-container .whatif-number-input {
   width: 52px;
   padding: 2px 4px;
   border: 1px solid var(--st-border-strong, #cbd5e1);
@@ -199,13 +199,13 @@
   color: var(--st-text, #1e293b);
 }
 
-.whatif-number-input:focus {
+.superset-hierarchical-table-container .whatif-number-input:focus {
   border-color: #3b82f6;
   outline: none;
 }
 
 /* Footer Actions */
-.whatif-actions {
+.superset-hierarchical-table-container .whatif-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -215,19 +215,19 @@
   border-top: 1px dashed var(--st-border, #e2e8f0);
 }
 
-.whatif-actions-left {
+.superset-hierarchical-table-container .whatif-actions-left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.whatif-actions-right {
+.superset-hierarchical-table-container .whatif-actions-right {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.whatif-scenario-select {
+.superset-hierarchical-table-container .whatif-scenario-select {
   padding: 3px 8px;
   font-size: 11px;
   border: 1px solid var(--st-border-strong, #cbd5e1);
@@ -237,19 +237,19 @@
   cursor: pointer;
 }
 
-.whatif-scenario-select:focus {
+.superset-hierarchical-table-container .whatif-scenario-select:focus {
   border-color: #3b82f6;
   outline: none;
 }
 
 /* Inline dialog for saving preset */
-.whatif-save-inline {
+.superset-hierarchical-table-container .whatif-save-inline {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.whatif-save-input {
+.superset-hierarchical-table-container .whatif-save-input {
   padding: 3px 8px;
   font-size: 11px;
   border: 1px solid #3b82f6;

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Every CSS rule of the chart (about 180 selectors, 90 of them with generic class names such as `.empty-state` or `.toolbar-btn`) now sits under `.superset-hierarchical-table-container`, so it cannot restyle same-named classes of Superset. A test checks it.
+
 ## [1.0.0] - 2026-11-22
 
 Production hardening: the chart is easier to set up, fully in Italian, safer to render and follows the page theme. Saved charts keep working; see *Migration* for the controls that changed.
