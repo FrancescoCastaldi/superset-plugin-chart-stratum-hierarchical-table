@@ -1,5 +1,7 @@
 import { HierarchyValueDisplayMode, TableColumn, TreeNode, WhatIfBaseline } from '../types';
 import { computeWhatIfDelta } from './whatIfEngine';
+import { msg } from '../i18n';
+import { displayName } from './labels';
 
 export const CSV_EXPORT_FILENAME = 'stratum_tree_export.csv';
 
@@ -52,13 +54,13 @@ export function buildCsvRows({
     whatIfBaseline.nodeBaselines.size > 0,
   );
 
-  const headerRow: string[] = [columns[0]?.title || 'Hierarchy'];
+  const headerRow: string[] = [columns[0]?.title || msg('label.hierarchy')];
   if (hasWhatIf) {
     for (const c of displayCols) {
       const baseTitle = c.baseMetric ? `${c.baseMetric} (${c.title || c.key})` : c.title || c.key;
-      headerRow.push(`${baseTitle} (Base)`);
-      headerRow.push(`${baseTitle} (Simulato)`);
-      headerRow.push(`${baseTitle} (Δ%)`);
+      headerRow.push(msg('csv.base', { title: baseTitle }));
+      headerRow.push(msg('csv.simulated', { title: baseTitle }));
+      headerRow.push(msg('csv.delta', { title: baseTitle }));
     }
   } else {
     headerRow.push(
@@ -104,7 +106,7 @@ export function buildCsvRows({
   const gtRow =
     showGrandTotal && grandTotalNode
       ? [
-          grandTotalNode.name,
+          displayName(grandTotalNode.name),
           ...extractNodeMetricCells(grandTotalNode, displayMode !== 'leaves_only'),
         ]
       : null;
@@ -118,7 +120,7 @@ export function buildCsvRows({
       const indent = '  '.repeat(node.depth ?? 0);
       const renderValues = shouldRenderMetricValue(node, displayMode);
       rows.push([
-        indent + node.name,
+        indent + displayName(node.name),
         ...extractNodeMetricCells(node, renderValues),
       ]);
       if (node.children && node.children.length > 0) {

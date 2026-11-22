@@ -1,6 +1,7 @@
 import { TreeNode, AggregationFunction } from '../types';
 import { hasDiffToken } from './nameHeuristics';
 import { isTimeMetricName } from './timeMetricRegistry';
+import { GRAND_TOTAL_NAME, NEW_VALUE } from './labels';
 
 const MEMO_LIMIT = 10000;
 
@@ -397,7 +398,7 @@ function computePercentageVariation(
     if (rawConf > 0) {
       metrics[key] = Math.round(((rawCorr - rawConf) * 1000.0) / rawConf) / 10;
     } else if (rawConf === 0 && rawCorr > 0) {
-      metrics[key] = 'Nuovo';
+      metrics[key] = NEW_VALUE;
     } else if (rawConf === 0 && rawCorr === 0) {
       metrics[key] = 0;
     } else {
@@ -405,7 +406,7 @@ function computePercentageVariation(
     }
   } else if (typeof rawCorr === 'number' && rawConf === 0) {
     if (rawCorr > 0) {
-      metrics[key] = 'Nuovo';
+      metrics[key] = NEW_VALUE;
     } else {
       metrics[key] = 0;
     }
@@ -886,9 +887,9 @@ export function computeGrandTotal(
   return {
     key: '__grand_total__',
     id: '__grand_total__',
-    name: 'Grand Total',
+    name: GRAND_TOTAL_NAME,
     depth: 0,
-    path: ['Grand Total'],
+    path: [GRAND_TOTAL_NAME],
     isLeaf: true,
     metrics: grandTotalMetrics,
     subtotals: grandTotalMetrics,

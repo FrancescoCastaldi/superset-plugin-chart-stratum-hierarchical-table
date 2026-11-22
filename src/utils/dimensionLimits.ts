@@ -1,5 +1,6 @@
 import { AggregationFunction, DimensionLimitMode, DimensionLimitRule, TreeNode } from '../types';
 import { rollupFunction, rollupTreeMetrics } from './aggregations';
+import { MESSAGES } from '../i18n';
 
 export type { DimensionLimitMode, DimensionLimitRule };
 
@@ -38,7 +39,7 @@ export function normalizeDimensionLimits(raw: unknown): DimensionLimitRule[] {
     const mode: DimensionLimitMode = (item as any).mode === 'bottom' ? 'bottom' : 'top';
     const othersLabel = typeof (item as any).othersLabel === 'string' && (item as any).othersLabel.trim()
       ? (item as any).othersLabel.trim()
-      : 'Altri ({k})';
+      : MESSAGES['label.others'];
 
     results.push({
       limit: Math.floor(limit),
@@ -57,7 +58,7 @@ export function normalizeDimensionLimits(raw: unknown): DimensionLimitRule[] {
  * Replaces placeholders like {k} or {count} with the count of collapsed items.
  */
 export function formatOthersLabel(template?: string, count: number = 0): string {
-  const tpl = template && template.trim() ? template : 'Altri ({k})';
+  const tpl = template && template.trim() ? template : MESSAGES['label.others'];
   return tpl.replace(/\{k\}/gi, String(count)).replace(/\{count\}/gi, String(count));
 }
 

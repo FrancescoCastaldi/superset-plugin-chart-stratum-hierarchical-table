@@ -1,4 +1,5 @@
 import { MetricPolarity } from '../types';
+import { msg } from '../i18n';
 
 export interface SparklineGeometry {
   /** SVG polyline points of the consecutive runs of values, one string per run. */
@@ -79,7 +80,7 @@ export default function Sparkline({
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
-      aria-label={label ?? 'Trend over the periods'}
+      aria-label={label ?? msg('sparkline.label')}
     >
       {label ? <title>{label}</title> : null}
       {runs.map((points, i) => (

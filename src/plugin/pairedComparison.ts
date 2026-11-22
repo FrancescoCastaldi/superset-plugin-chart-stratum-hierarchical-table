@@ -3,6 +3,7 @@ import { isDerivedMetric, isDistinctEntityMetric } from '../utils/aggregations';
 import { formatMetricValue } from '../utils/formatters';
 import { COMPARISON_SUFFIX } from '../utils/timeComparison';
 import type { ColumnLayout, ValueFormat } from './columnBuilders';
+import { NEW_VALUE } from '../utils/labels';
 
 /**
  * Paired comparison: next to every value cell, the same cell computed on the comparison period
@@ -86,7 +87,7 @@ export function computePairedDeltas(current: unknown, comparison: unknown): Pair
   let pct: number | string | null;
   if (comp !== 0) pct = Math.round((diff / Math.abs(comp)) * 1000) / 10;
   else if (cur === 0) pct = 0;
-  else pct = cur > 0 ? 'Nuovo' : null;
+  else pct = cur > 0 ? NEW_VALUE : null;
   return {
     abs: Math.round(diff * 100) / 100,
     pct,

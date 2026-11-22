@@ -10,6 +10,7 @@ import {
   hasNativeComparison,
 } from '../utils/timeComparison';
 import { chronologicalOrder, collectDistinctPivotKeys } from './pivotOrdering';
+import { NEW_VALUE } from '../utils/labels';
 
 export interface GrandTotalParams {
   treeData: TreeNode[];
@@ -104,7 +105,7 @@ export function buildGrandTotalNode({
       const compVal = grandTotalNode.metrics[k];
       if (typeof curVal === 'number' && typeof compVal === 'number') {
         const diff = curVal - compVal;
-        const delta = compVal !== 0 ? (diff / compVal) * 100 : (curVal === 0 ? 0 : 'Nuovo');
+        const delta = compVal !== 0 ? (diff / compVal) * 100 : (curVal === 0 ? 0 : NEW_VALUE);
         grandTotalNode.metrics[`${bK}___diff`] = diff;
         grandTotalNode.metrics[`${bK}___delta`] = delta;
         if (grandTotalNode.subtotals) {
@@ -146,7 +147,7 @@ export function buildGrandTotalNode({
             if (compVal > 0) {
               deltaPct = Math.round(((curVal - compVal) * 1000.0) / compVal) / 10;
             } else if (compVal === 0 && curVal > 0) {
-              deltaPct = 'Nuovo';
+              deltaPct = NEW_VALUE;
             } else if (compVal === 0 && curVal === 0) {
               deltaPct = 0;
             }

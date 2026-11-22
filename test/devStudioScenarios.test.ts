@@ -77,7 +77,7 @@ describe('Dev Studio Benchmark Scenarios Data Pipeline', () => {
     expect(typeof asl1CentroYoY.metrics.ricoveri___period_delta).toBe('number');
     expect(asl1CentroYoY.metrics.ricoveri___period_delta_pct).not.toBeNull();
     const yoyHeader = yoyProps.pivotHeaderGroups?.find(g => g.key === '__period_comparison__');
-    expect(yoyHeader?.title).toBe('Δ vs previous year (YoY)');
+    expect(yoyHeader?.title).toBe('Δ vs anno precedente (YoY)');
 
     // 2. Month-over-Month (MoM)
     const momProps = transformProps({
@@ -98,7 +98,7 @@ describe('Dev Studio Benchmark Scenarios Data Pipeline', () => {
     expect(asl1CentroMoM.metrics.ricoveri___period_delta).not.toBeNull();
     expect(typeof asl1CentroMoM.metrics.ricoveri___period_delta).toBe('number');
     const momHeader = momProps.pivotHeaderGroups?.find(g => g.key === '__period_comparison__');
-    expect(momHeader?.title).toBe('Δ vs previous month (MoM)');
+    expect(momHeader?.title).toBe('Δ vs mese precedente (MoM)');
 
     // 3. Stesso Periodo Anno Scorso (Same period last year)
     const samePeriodProps = transformProps({
@@ -118,6 +118,6 @@ describe('Dev Studio Benchmark Scenarios Data Pipeline', () => {
     expect(asl1SamePeriod.metrics.ricoveri___period_delta).not.toBeNull();
     expect(typeof asl1SamePeriod.metrics.ricoveri___period_delta).toBe('number');
     const samePeriodHeader = samePeriodProps.pivotHeaderGroups?.find(g => g.key === '__period_comparison__');
-    expect(samePeriodHeader?.title).toBe('Δ vs same period last year');
+    expect(samePeriodHeader?.title).toBe("Δ vs stesso periodo dell'anno precedente");
   });
 });

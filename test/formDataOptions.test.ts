@@ -92,9 +92,9 @@ describe('formDataOptions', () => {
       combineMetric: true,
       pivotSortOrder: 'desc',
       pivotRowTotalsPosition: 'none',
-      pivotRowTotalsLabel: 'Totals',
+      pivotRowTotalsLabel: 'Totale',
       showPivotColumnSubtotals: true,
-      pivotColumnSubtotalLabel: 'Total',
+      pivotColumnSubtotalLabel: 'Totale gruppo',
       pivotTimeDeltaMode: 'none',
       pivotTimeDeltaLag: 1,
     });

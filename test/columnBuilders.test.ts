@@ -43,8 +43,8 @@ describe('columnBuilders', () => {
       align: 'left',
       width: 280,
     });
-    expect(buildHierarchyColumn('multi_dimension', []).title).toBe('Hierarchy');
-    expect(buildHierarchyColumn('parent_child', ['x']).title).toBe('Hierarchy Tree');
+    expect(buildHierarchyColumn('multi_dimension', []).title).toBe('Gerarchia');
+    expect(buildHierarchyColumn('parent_child', ['x']).title).toBe('Albero gerarchico');
   });
 
   describe('buildFlatColumns', () => {

@@ -29,6 +29,7 @@ import {
   PERIOD_DELTA_SUFFIX,
   TimeDeltaStrategyConfig,
 } from '../utils/timeComparison';
+import { msg } from '../i18n';
 
 export const HIERARCHY_COLUMN_KEY = '__hierarchy_tree__';
 export const ROW_TOTALS_GROUP_KEY = '__pivot_row_totals__';
@@ -113,8 +114,8 @@ export function buildHierarchyColumn(hierarchyType: string, dimensions: string[]
     key: HIERARCHY_COLUMN_KEY,
     title:
       hierarchyType === 'multi_dimension'
-        ? dimensions.join(' / ') || 'Hierarchy'
-        : 'Hierarchy Tree',
+        ? dimensions.join(' / ') || msg('label.hierarchy')
+        : msg('label.hierarchyTree'),
     dataIndex: 'name',
     isMetric: false,
     isHierarchyDimension: true,
@@ -636,22 +637,22 @@ function buildSeparatedPivotColumns(
 }
 
 function periodComparisonTitle({ strategy, referencePeriod, timeGrain }: TimeDeltaStrategyConfig): string {
-  if (strategy === 'budget_target') return 'Δ vs budget target';
-  if (strategy === 'prev_year_same_period') return 'Δ vs same period last year';
-  if (referencePeriod === 'ytd') return 'Δ vs YTD average';
+  if (strategy === 'budget_target') return msg('comparison.budget');
+  if (strategy === 'prev_year_same_period') return msg('comparison.samePeriodLastYear');
+  if (referencePeriod === 'ytd') return msg('comparison.ytd');
   switch (timeGrain) {
     case 'year':
-      return 'Δ vs previous year (YoY)';
+      return msg('comparison.year');
     case 'month':
-      return 'Δ vs previous month (MoM)';
+      return msg('comparison.month');
     case 'quarter':
-      return 'Δ vs previous quarter (QoQ)';
+      return msg('comparison.quarter');
     case 'day':
-      return 'Δ vs previous day (DoD)';
+      return msg('comparison.day');
     case 'week':
-      return 'Δ vs previous week (WoW)';
+      return msg('comparison.week');
     default:
-      return 'Δ vs previous period';
+      return msg('comparison.previous');
   }
 }
 
@@ -729,7 +730,7 @@ export function appendSparklineColumns(
     const key = `${m}___SPARK`;
     layout.columns.push({
       key,
-      title: multiple ? `Trend ${m}` : 'Trend',
+      title: multiple ? msg('label.trendOfMetric', { metric: m }) : msg('label.trend'),
       dataIndex: key,
       isMetric: true,
       baseMetric: m,
@@ -739,7 +740,7 @@ export function appendSparklineColumns(
     });
   }
   if (candidates.length > 0) {
-    layout.pivotHeaderGroups.push({ title: 'Trend', key: SPARKLINE_GROUP_KEY, colSpan: candidates.length });
+    layout.pivotHeaderGroups.push({ title: msg('label.trend'), key: SPARKLINE_GROUP_KEY, colSpan: candidates.length });
   }
   return candidates.length;
 }

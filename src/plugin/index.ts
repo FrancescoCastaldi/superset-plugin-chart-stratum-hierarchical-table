@@ -5,25 +5,22 @@ import transformProps from './transformProps';
 import thumbnail from '../images/thumbnail.png';
 const example = thumbnail;
 
-const t = (str: string) => str;
-
 const metadata = new ChartMetadata({
-  name: t('StratumTree: Hierarchical Matrix Grid'),
-  description: t(
-    'A deep-hierarchy tree table and matrix grid supporting multi-level dimension drill-down, parent-child adjacency graphs, roll-up aggregations, and native Superset 6.1.0 cross-filtering.',
-  ),
+  name: 'StratumTree: tabella gerarchica e matrice',
+  description:
+    'Tabella ad albero e matrice pivot con più livelli di dimensioni, drill-down, gerarchie padre-figlio, subtotali, confronto tra periodi e cross-filter nativo di Superset.',
   behaviors: [Behavior.InteractiveChart, Behavior.DrillToDetail, Behavior.DrillBy],
-  category: t('Table'),
+  category: 'Tabella',
   tags: [
-    t('Stratum'),
-    t('StratumTree'),
-    t('Table'),
-    t('Hierarchy'),
-    t('Tree'),
-    t('Drilldown'),
-    t('Rollup'),
-    t('Matrix'),
-    t('Financial'),
+    'Stratum',
+    'StratumTree',
+    'Tabella',
+    'Gerarchia',
+    'Albero',
+    'Drill-down',
+    'Subtotali',
+    'Matrice',
+    'Finanza',
   ],
   credits: ['Francesco Castaldi'],
   exampleGallery: [{ url: example }],

@@ -342,7 +342,7 @@ describe('natural grain detection and numeric key parsing', () => {
     expect(roma.metrics.revenue___period_delta).toBe(60);
     expect(roma.metrics.revenue___period_delta_pct).toBe(60);
     const headerGroup = out.pivotHeaderGroups?.find(g => g.key === '__period_comparison__');
-    expect(headerGroup?.title).toBe('Δ vs previous month (MoM)');
+    expect(headerGroup?.title).toBe('Δ vs mese precedente (MoM)');
   });
 
   it('maps Superset time_grain_sqla to comparisonTimeGrain', () => {

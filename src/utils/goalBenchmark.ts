@@ -1,4 +1,5 @@
 import { GoalDelta, GoalDirection, GoalStatus, MetricGoal } from '../types';
+import { msg } from '../i18n';
 
 /** Minimum attainment ratio (actual vs target, inverted for lower_is_better) of each band. */
 export const DEFAULT_GOAL_THRESHOLDS = {
@@ -43,10 +44,10 @@ export function computeGoalDelta(nodeValue: number, goal: MetricGoal): GoalDelta
 }
 
 export const GOAL_STATUS_LABELS: Record<GoalStatus, string> = {
-  achieved: 'Achieved',
-  on_track: 'On track',
-  at_risk: 'At risk',
-  missed: 'Missed',
+  achieved: msg('goal.achieved'),
+  on_track: msg('goal.onTrack'),
+  at_risk: msg('goal.atRisk'),
+  missed: msg('goal.missed'),
 };
 
 /**

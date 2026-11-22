@@ -43,6 +43,9 @@ import { applyWhatIfScenario, computeWhatIfDelta } from '../utils/whatIfEngine';
 import { createScenarioManager } from '../utils/whatIfScenarioManager';
 import WhatIfToolbar from './WhatIfToolbar';
 import './HierarchicalTable.css';
+import { msg } from '../i18n';
+import { NEW_VALUE, displayName } from '../utils/labels';
+import { BoltIcon } from './icons';
 
 export type { ColumnMeta } from '../utils/tableColumns';
 
@@ -65,7 +68,7 @@ function GoalBadge({
   return (
     <span
       className={`goal-badge goal-${delta.status}`}
-      aria-label={`${GOAL_STATUS_LABELS[delta.status]}: ${comparison} vs target ${target}`}
+      aria-label={msg('cell.goalVsTarget', { status: GOAL_STATUS_LABELS[delta.status], comparison, target })}
     >
       {comparison}
     </span>
@@ -82,18 +85,24 @@ function SignalMarker({
   formatter?: (val: any) => any;
 }) {
   const show = (v: number) => (formatter ? formatter(v) : String(Math.round(v * 10) / 10));
-  const range = `CI ${Math.round(interval.level * 1000) / 10}%: ${show(interval.lower)} to ${show(interval.upper)}`;
+  const range = msg('cell.ciRange', {
+    level: Math.round(interval.level * 1000) / 10,
+    lower: show(interval.lower),
+    upper: show(interval.upper),
+  });
   if (!interval.signal) {
     return <span className="ci-range" title={range} aria-label={range} />;
   }
   const good = (interval.signal === 'above') === (polarity !== 'lower_is_better');
-  const label = `${interval.signal === 'above' ? 'Significantly above' : 'Significantly below'} the reference. ${range}`;
+  const label = msg(interval.signal === 'above' ? 'cell.signalAbove' : 'cell.signalBelow', { range });
   return (
     <span className={`signal-marker ${good ? 'signal-good' : 'signal-bad'}`} title={label} aria-label={label}>
       {interval.signal === 'above' ? '▲' : '▼'}
     </span>
   );
 }
+
+const signedPercent = (value: number): string => `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
 
 /** Re-render the window only when the scroll crosses a block of rows, not on every pixel. */
 const SCROLL_STEP_PX = 32 * 10;
@@ -209,7 +218,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
               className="node-checkbox"
               checked={isFilterSelected}
               onChange={() => onNodeClick(node)}
-              aria-label={`Select ${node.name} for cross-filtering`}
+              aria-label={msg('tree.selectNode', { name: displayName(node.name) })}
             />
           )}
           {hasChildren ? (
@@ -217,7 +226,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
               type="button"
               className="tree-toggle-btn"
               onClick={() => onToggleExpand(node.key)}
-              aria-label={isExpanded ? 'Collapse' : 'Expand'}
+              aria-label={isExpanded ? msg('tree.collapse') : msg('tree.expand')}
             >
               {isExpanded ? '−' : '+'}
             </button>
@@ -230,9 +239,12 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
               'node-filter-active': isFilterSelected,
             })}
             onClick={() => onNodeClick(node)}
-            title={`Click to ${isFilterSelected ? 'remove from filter' : 'filter dashboard by ' + node.name} (${node.path.join(' > ')})`}
+            title={msg(isFilterSelected ? 'tree.filterRemove' : 'tree.filterAdd', {
+              name: displayName(node.name),
+              path: node.path.map(displayName).join(' > '),
+            })}
           >
-            {node.name}
+            {displayName(node.name)}
           </span>
         </div>
       </td>
@@ -271,7 +283,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
         // A matching rule replaces the heatmap background with its own colours.
         const format = firstByPriority([rowFormat, cellFormats[index]]);
         const isDelta = meta?.isDelta ?? false;
-        const isNuovo = val === 'Nuovo';
+        const isNuovo = val === NEW_VALUE;
 
         const bound =
           inScope && hasMinMax
@@ -298,12 +310,12 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
 
         // Base metric content
         const baseContent = isNuovo ? (
-          <span className="badge-delta-nuovo">New</span>
+          <span className="badge-delta-nuovo">{msg('label.new')}</span>
         ) : isDelta && typeof val === 'number' ? (
           col?.key?.endsWith('___delta') ? (
             <span
               className={classNames('delta-badge', deltaClassName(val - (col?.deltaBaseline ?? 0), col?.polarity))}
-              title={`Delta %: ${val > 0 ? '+' : ''}${val.toFixed(1)}%`}
+              title={msg('cell.deltaPct', { value: signedPercent(val) })}
             >
               {val > 0 ? '▲ +' : val < 0 ? '▼ ' : ''}
               {Math.abs(val).toFixed(1)}%
@@ -368,7 +380,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
           cellVarianceDelta !== null ? (
             <span
               className={classNames('delta-badge', deltaClassName(cellVarianceDelta, col?.polarity))}
-              title={`Change: ${cellVarianceDelta > 0 ? '+' : ''}${cellVarianceDelta.toFixed(1)}%`}
+              title={msg('cell.change', { value: signedPercent(cellVarianceDelta) })}
             >
               {cellVarianceDelta > 0 ? '▲ +' : cellVarianceDelta < 0 ? '▼ ' : ''}
               {Math.abs(cellVarianceDelta).toFixed(1)}%
@@ -396,7 +408,11 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
             whatIfBadge = (
               <span
                 className={classNames('whatif-delta-badge', badgeClass)}
-                title={`Simulato: ${formattedCurrent} (Base: ${formattedBase}, Scostamento: ${delta.pct > 0 ? '+' : ''}${delta.pct.toFixed(1)}%)`}
+                title={msg('cell.simulated', {
+                  current: formattedCurrent,
+                  base: formattedBase,
+                  pct: signedPercent(delta.pct),
+                })}
               >
                 {arrow}{Math.abs(delta.pct).toFixed(1)}%
               </span>
@@ -418,7 +434,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
         );
         const cellContent =
           suppressedLabel !== undefined ? (
-            <span className="suppressed-cell" title="Value hidden for privacy (small number)">
+            <span className="suppressed-cell" title={msg('cell.suppressed')}>
               {suppressedLabel}
             </span>
           ) : interval || format?.rule.icon ? (
@@ -472,7 +488,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
                   <span
                     className={`minmax-badge minmax-max ${themeClass}`}
                     style={isCustom ? { background: theme.positive } : undefined}
-                    title={`Maximum value: ${val}`}
+                    title={msg('cell.max', { value: String(val) })}
                   >
                     MAX
                   </span>
@@ -481,7 +497,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
                   <span
                     className={`minmax-badge minmax-min ${themeClass}`}
                     style={isCustom ? { color: theme.negative, borderColor: theme.negative } : undefined}
-                    title={`Minimum value: ${val}`}
+                    title={msg('cell.min', { value: String(val) })}
                   >
                     MIN
                   </span>
@@ -786,7 +802,7 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
         className="col-resize-handle"
         role="separator"
         aria-orientation="vertical"
-        title="Drag to resize, double-click to restore"
+        title={msg('header.resize')}
         onMouseDown={e =>
           columnLayout.startResize(
             e,
@@ -1123,7 +1139,9 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
     return (
       <span
         className="sort-indicator sort-indicator-active"
-        aria-label={`Sorted ${sortDirection}`}
+        aria-label={msg('header.sorted', {
+          direction: msg(sortDirection === 'asc' ? 'header.asc' : 'header.desc'),
+        })}
       >
         {sortDirection === 'asc' ? ' ▲' : ' ▼'}
       </span>
@@ -1177,7 +1195,7 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
   if (!data || data.length === 0) {
     return (
       <div className="superset-hierarchical-table-container" style={containerStyle}>
-        <div className="empty-state">No data available for hierarchical table.</div>
+        <div className="empty-state">{msg('state.noData')}</div>
       </div>
     );
   }
@@ -1191,7 +1209,7 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
         className="hierarchy-cell"
         onContextMenu={onContextMenu ? e => handleContextMenu(e, null) : undefined}
       >
-        <span className="node-name">{effectiveGrandTotalNode.name}</span>
+        <span className="node-name">{displayName(effectiveGrandTotalNode.name)}</span>
       </td>
       {displayCols.map(col => {
         if (activeDisplayMode === 'leaves_only') {
@@ -1205,7 +1223,7 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
         }
         const val = effectiveGrandTotalNode.metrics?.[col.key] ?? effectiveGrandTotalNode.subtotals?.[col.key];
         const isDelta = columnMetaMap.get(col.key)?.isDelta ?? false;
-        const isNuovo = val === 'Nuovo';
+        const isNuovo = val === NEW_VALUE;
 
         let gtVarianceDelta: number | null = null;
         if (showVarianceDelta && showVarianceBadges && !isDelta && typeof val === 'number' && !col?.key?.endsWith('___comp')) {
@@ -1243,7 +1261,7 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
           gtVarianceDelta !== null ? (
             <span
               className={classNames('delta-badge', deltaClassName(gtVarianceDelta, col?.polarity))}
-              title={`Total change: ${gtVarianceDelta > 0 ? '+' : ''}${gtVarianceDelta.toFixed(1)}%`}
+              title={msg('total.change', { value: signedPercent(gtVarianceDelta) })}
             >
               {gtVarianceDelta > 0 ? '▲ +' : gtVarianceDelta < 0 ? '▼ ' : ''}
               {Math.abs(gtVarianceDelta).toFixed(1)}%
@@ -1271,7 +1289,11 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
             gtWhatIfBadge = (
               <span
                 className={classNames('whatif-delta-badge', badgeClass)}
-                title={`Simulated total: ${formattedCurrent} (Base: ${formattedBase}, Scostamento: ${delta.pct > 0 ? '+' : ''}${delta.pct.toFixed(1)}%)`}
+                title={msg('total.simulated', {
+                  current: formattedCurrent,
+                  base: formattedBase,
+                  pct: signedPercent(delta.pct),
+                })}
               >
                 {arrow}{Math.abs(delta.pct).toFixed(1)}%
               </span>
@@ -1289,12 +1311,12 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
             onContextMenu={onContextMenu ? e => handleContextMenu(e, null, col) : undefined}
           >
             {isNuovo ? (
-              <span className="badge-delta-nuovo">New</span>
+              <span className="badge-delta-nuovo">{msg('label.new')}</span>
             ) : isDelta && typeof val === 'number' ? (
               col?.key?.endsWith('___delta') ? (
                 <span
                   className={classNames('delta-badge', deltaClassName(val - (col?.deltaBaseline ?? 0), col?.polarity))}
-                  title={`Total delta %: ${val > 0 ? '+' : ''}${val.toFixed(1)}%`}
+                  title={msg('total.deltaPct', { value: signedPercent(val) })}
                 >
                   {val > 0 ? '▲ +' : val < 0 ? '▼ ' : ''}
                   {Math.abs(val).toFixed(1)}%
@@ -1342,7 +1364,8 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
             <div className="table-search-wrapper">
               <input
                 type="text"
-                placeholder="Search hierarchy..."
+                placeholder={msg('toolbar.searchPlaceholder')}
+                aria-label={msg('toolbar.searchLabel')}
                 className="table-search-input"
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
@@ -1355,7 +1378,8 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
                     setSearchInput('');
                     setDebouncedSearch('');
                   }}
-                  title="Clear search"
+                  title={msg('toolbar.clearSearch')}
+                  aria-label={msg('toolbar.clearSearch')}
                 >
                   ✕
                 </button>
@@ -1368,13 +1392,16 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
             <div className="active-cross-filter-container">
               {Array.from(selectedFilterMap.values()).map(filter => (
                 <div key={filter.key} className="active-cross-filter-badge">
-                  <span className="filter-badge-icon">⚡</span>
+                  <span className="filter-badge-icon">
+                    <BoltIcon />
+                  </span>
                   <span className="filter-badge-text">{filter.value}</span>
                   <button
                     type="button"
                     className="filter-badge-clear"
                     onClick={() => handleRemoveSingleFilter(filter.key)}
-                    title={`Remove ${filter.value} filter`}
+                    title={msg('toolbar.removeFilter', { value: filter.value })}
+                    aria-label={msg('toolbar.removeFilter', { value: filter.value })}
                   >
                     ✕
                   </button>
@@ -1385,9 +1412,9 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
                   type="button"
                   className="filter-clear-all-btn"
                   onClick={handleClearActiveFilter}
-                  title="Clear all filters"
+                  title={msg('toolbar.clearAllFilters')}
                 >
-                  Clear All ({selectedFilterMap.size})
+                  {msg('toolbar.clearAll', { count: selectedFilterMap.size })}
                 </button>
               )}
             </div>
@@ -1396,16 +1423,16 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
 
         <div className="table-toolbar-right">
           <div className="toolbar-display-mode-selector">
-            <span className="toolbar-label">Values:</span>
+            <span className="toolbar-label">{msg('toolbar.values')}</span>
             <select
               value={activeDisplayMode}
               onChange={e => setActiveDisplayMode(e.target.value as HierarchyValueDisplayMode)}
               className="toolbar-select"
-              aria-label="Metric value display mode"
+              aria-label={msg('toolbar.valuesMode')}
             >
-              <option value="all">All levels</option>
-              <option value="leaves_only">Leaves only</option>
-              <option value="parents_only">Parents only</option>
+              <option value="all">{msg('toolbar.modeAll')}</option>
+              <option value="leaves_only">{msg('toolbar.modeLeaves')}</option>
+              <option value="parents_only">{msg('toolbar.modeParents')}</option>
             </select>
           </div>
           {columnLayout.customized && (
@@ -1413,9 +1440,9 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
               type="button"
               className="toolbar-btn"
               onClick={columnLayout.reset}
-              title="Restore column widths and order"
+              title={msg('toolbar.restoreColumnsTitle')}
             >
-              Ripristina colonne
+              {msg('toolbar.restoreColumns')}
             </button>
           )}
           {enableExport && (
@@ -1423,16 +1450,16 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
               type="button"
               className="toolbar-btn toolbar-export-btn"
               onClick={handleExportCSV}
-              title="Download hierarchy CSV with preserved order and subtotals"
+              title={msg('toolbar.exportCsvTitle')}
             >
-              Export CSV
+              {msg('toolbar.exportCsv')}
             </button>
           )}
           <button type="button" className="toolbar-btn" onClick={handleExpandAll}>
-            Expand All
+            {msg('toolbar.expandAll')}
           </button>
           <button type="button" className="toolbar-btn" onClick={handleCollapseAll}>
-            Collapse All
+            {msg('toolbar.collapseAll')}
           </button>
         </div>
       </div>
@@ -1566,11 +1593,11 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
                       >
                         <span>
                           {isGroupDraggable && (
-                            <span className="drag-handle-icon" title="Drag metric">
+                            <span className="drag-handle-icon" title={msg('header.dragMetric')}>
                               ⠿
                             </span>
                           )}
-                          {group.title}
+                          {displayName(group.title)}
                         </span>
                         {renderSortIndicator(group.key)}
                       </th>
@@ -1637,11 +1664,11 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
                       >
                         <span>
                           {isSubDraggable && props.combineMetric && (
-                            <span className="drag-handle-icon" title="Drag metric">
+                            <span className="drag-handle-icon" title={msg('header.dragMetric')}>
                               ⠿
                             </span>
                           )}
-                          {col.title}
+                          {displayName(col.title)}
                         </span>
                         {renderSortIndicator(col.key)}
                         {renderResizeHandle(col)}
@@ -1749,11 +1776,11 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
                     >
                       <span>
                         {isFlatDraggable && (
-                          <span className="drag-handle-icon" title="Drag metric">
+                          <span className="drag-handle-icon" title={msg('header.dragMetric')}>
                             ⠿
                           </span>
                         )}
-                        {col.title}
+                        {displayName(col.title)}
                       </span>
                       {renderSortIndicator(sortKey)}
                       {renderResizeHandle(col)}

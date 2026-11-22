@@ -63,7 +63,7 @@ describe('sparkline columns', () => {
     const trend = out.columns.filter(c => c.sparkline);
     expect(trend).toHaveLength(1);
     expect(trend[0].sparkline).toEqual({ metric: 'casi', periods: ['Gennaio', 'Febbraio', 'Marzo'] });
-    expect(out.pivotHeaderGroups!.some(g => g.title === 'Trend' && g.colSpan === 1)).toBe(true);
+    expect(out.pivotHeaderGroups!.some(g => g.title === 'Andamento' && g.colSpan === 1)).toBe(true);
   });
 
   it('adds none by default or without exactly one pivot dimension', () => {

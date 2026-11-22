@@ -31,6 +31,7 @@ import { normalizeMetricDefinitions } from '../utils/metricSemantics';
 import { normalizeTableCalculations, TableCalculationConfig } from '../utils/tableCalculations';
 import { DEFAULT_SUPPRESSION_LABEL, SuppressionOptions, parseSuppressionMetrics } from '../utils/suppression';
 import { getTheme, ResolvedTheme } from '../utils/themes';
+import { msg } from '../i18n';
 
 /**
  * Normalized chart options. Every camelCase control has a legacy snake_case alias:
@@ -257,10 +258,10 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     pivot_sort_order,
     pivotRowTotalsPosition = 'none',
     pivot_row_totals_position,
-    pivotRowTotalsLabel = 'Totals',
+    pivotRowTotalsLabel = msg('totals.rowLabel'),
     pivot_row_totals_label,
     showPivotColumnSubtotals = true,
-    pivotColumnSubtotalLabel = 'Total',
+    pivotColumnSubtotalLabel = msg('totals.columnSubtotalLabel'),
     pivot_column_subtotal_label,
     pivotTimeDeltaMode = 'none',
     pivot_time_delta_mode,
@@ -354,9 +355,9 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     combineMetric: combineMetric ?? true,
     pivotSortOrder: pivotSortOrder || pivot_sort_order || 'desc',
     pivotRowTotalsPosition: pivotRowTotalsPosition || pivot_row_totals_position || 'none',
-    pivotRowTotalsLabel: pivotRowTotalsLabel || pivot_row_totals_label || 'Totals',
+    pivotRowTotalsLabel: pivotRowTotalsLabel || pivot_row_totals_label || msg('totals.rowLabel'),
     showPivotColumnSubtotals: showPivotColumnSubtotals ?? true,
-    pivotColumnSubtotalLabel: pivotColumnSubtotalLabel || pivot_column_subtotal_label || 'Total',
+    pivotColumnSubtotalLabel: pivotColumnSubtotalLabel || pivot_column_subtotal_label || msg('totals.columnSubtotalLabel'),
     pivotTimeDeltaMode: pivotTimeDeltaMode || pivot_time_delta_mode || 'none',
     pivotTimeDeltaLag: Number(pivotTimeDeltaLag || pivot_time_delta_lag || 1),
     // La base del confronto di fine serie sostituisce comparisonType e referencePeriod; i grafici

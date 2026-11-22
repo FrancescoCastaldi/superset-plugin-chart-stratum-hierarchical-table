@@ -67,7 +67,7 @@ describe('column layout flags in the table', () => {
     expect(t.q('colgroup')).toBeNull();
     expect(t.all('.col-resize-handle')).toHaveLength(0);
     expect(t.all('thead th[draggable="true"]')).toHaveLength(0);
-    expect(t.q('.toolbar-btn[title*="Restore"]')).toBeNull();
+    expect(t.q('.toolbar-btn[title*="Ripristina"]')).toBeNull();
     t.unmount();
   });
 
@@ -113,7 +113,7 @@ describe('column layout flags in the table', () => {
     expect(parseFloat(t.all('colgroup col')[1].style.width)).toBe(195);
     expect(parseFloat(t.q('table').style.width)).toBe(before + 60);
     // The toolbar offers the way back.
-    expect(t.q('.toolbar-btn[title*="Restore"]')).not.toBeNull();
+    expect(t.q('.toolbar-btn[title*="Ripristina"]')).not.toBeNull();
     t.unmount();
   });
 
@@ -168,7 +168,7 @@ describe('column layout flags in the table', () => {
     );
     const t = mount({ reorderColumnsByDrag: true });
     act(() => {
-      Simulate.click(t.q('.toolbar-btn[title*="Restore"]'));
+      Simulate.click(t.q('.toolbar-btn[title*="Ripristina"]'));
     });
     expect(headerTitles(t).slice(1)).toEqual(['Richieste', 'Prime visite']);
     expect(window.localStorage.getItem(layoutStorageKey(77))).toBeNull();

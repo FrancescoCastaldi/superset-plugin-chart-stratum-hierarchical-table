@@ -102,7 +102,7 @@ describe('csvExport', () => {
     });
     expect(rows).toEqual([
       ['regione / asl', 'richieste_corr', 'delta_richieste_pct', '2026-09 (totale)'],
-      ['Grand Total', '150', '12.5', ''],
+      ['Totale generale', '150', '12.5', ''],
       ['Lazio, "Nord"', '150', 'Nuovo', '9'],
       ['  ASL1', '100', '', '0'],
     ]);
@@ -122,7 +122,7 @@ describe('csvExport', () => {
       ['regione / asl', 'richieste_corr', 'delta_richieste_pct', '2026-09 (totale)'],
       ['Lazio, "Nord"', '', '', ''],
       ['  ASL1', '100', '', '0'],
-      ['Grand Total', '', '', ''],
+      ['Totale generale', '', '', ''],
     ]);
   });
 
@@ -136,7 +136,7 @@ describe('csvExport', () => {
       grandTotalNode,
       grandTotalPosition: 'top',
     });
-    expect(rows).toEqual([['Hierarchy'], ['Lazio, "Nord"'], ['  ASL1']]);
+    expect(rows).toEqual([['Gerarchia'], ['Lazio, "Nord"'], ['  ASL1']]);
   });
 
   it('escapes cells containing separators, quotes or line breaks', () => {

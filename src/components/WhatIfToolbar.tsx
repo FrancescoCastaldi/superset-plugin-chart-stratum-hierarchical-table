@@ -5,6 +5,8 @@ import {
   percentageToFactor,
   getSimulatableMetrics,
 } from '../utils/whatIfEngine';
+import { msg } from '../i18n';
+import { DownloadIcon, SaveIcon, WandIcon } from './icons';
 import './WhatIfToolbar.css';
 
 export interface WhatIfToolbarProps {
@@ -111,15 +113,17 @@ export const WhatIfToolbar: React.FC<WhatIfToolbarProps> = ({
             type="button"
             className={`whatif-title-btn ${isExpanded ? 'active' : ''}`}
             onClick={handleToggle}
-            title="Open or close the What-If panel"
+            title={msg('whatif.toggleTitle')}
           >
-            <span>🪄 What-If Simulation</span>
+            <span>
+              <WandIcon /> {msg('whatif.title')}
+            </span>
             <span>{isExpanded ? '▲' : '▼'}</span>
           </button>
 
           {activeAdjustmentsCount > 0 && (
             <span className="whatif-badge-active">
-              ● {activeScenarioName ? activeScenarioName : `Simulation active (${activeAdjustmentsCount} metrics)`}
+              ● {activeScenarioName ? activeScenarioName : msg('whatif.active', { count: activeAdjustmentsCount })}
             </span>
           )}
         </div>
@@ -130,9 +134,9 @@ export const WhatIfToolbar: React.FC<WhatIfToolbarProps> = ({
               type="button"
               className="whatif-btn whatif-btn-reset"
               onClick={onReset}
-              title="Reset all simulated changes and restore the historical data"
+              title={msg('whatif.resetTitle')}
             >
-              ✕ Reset Baseline
+              ✕ {msg('whatif.reset')}
             </button>
           )}
 
@@ -141,9 +145,9 @@ export const WhatIfToolbar: React.FC<WhatIfToolbarProps> = ({
               type="button"
               className="whatif-btn"
               onClick={onExportWithSimulation}
-              title="Download CSV with base, simulated and delta % columns"
+              title={msg('whatif.exportCsvTitle')}
             >
-              📥 Esporta CSV Simulato
+              <DownloadIcon /> {msg('whatif.exportCsv')}
             </button>
           )}
         </div>
@@ -177,6 +181,7 @@ export const WhatIfToolbar: React.FC<WhatIfToolbarProps> = ({
                       max="50"
                       step="1"
                       value={pct}
+                      aria-label={msg('whatif.metricSlider', { metric })}
                       onChange={e => handlePercentageChange(metric, Number(e.target.value))}
                     />
                     <input
@@ -185,6 +190,7 @@ export const WhatIfToolbar: React.FC<WhatIfToolbarProps> = ({
                       min="-100"
                       max="500"
                       value={pct}
+                      aria-label={msg('whatif.metricNumber', { metric })}
                       onChange={e => handlePercentageChange(metric, Number(e.target.value))}
                     />
                   </div>
@@ -203,22 +209,23 @@ export const WhatIfToolbar: React.FC<WhatIfToolbarProps> = ({
                       className="whatif-btn whatif-btn-primary"
                       onClick={() => setIsSavingInline(true)}
                       disabled={activeAdjustmentsCount === 0}
-                      title="Save the current configuration as a named preset"
+                      title={msg('whatif.saveScenarioTitle')}
                     >
-                      💾 Salva Scenario
+                      <SaveIcon /> {msg('whatif.saveScenario')}
                     </button>
                   ) : (
                     <form className="whatif-save-inline" onSubmit={handleSaveSubmit}>
                       <input
                         type="text"
                         className="whatif-save-input"
-                        placeholder="Scenario name (e.g. Optimistic +10%)..."
+                        placeholder={msg('whatif.scenarioPlaceholder')}
+                        aria-label={msg('whatif.scenarioName')}
                         value={newScenarioName}
                         onChange={e => setNewScenarioName(e.target.value)}
                         autoFocus
                       />
                       <button type="submit" className="whatif-btn whatif-btn-primary">
-                        Salva
+                        {msg('whatif.save')}
                       </button>
                       <button
                         type="button"
@@ -228,7 +235,7 @@ export const WhatIfToolbar: React.FC<WhatIfToolbarProps> = ({
                           setNewScenarioName('');
                         }}
                       >
-                        Annulla
+                        {msg('whatif.cancel')}
                       </button>
                     </form>
                   )}
@@ -240,10 +247,10 @@ export const WhatIfToolbar: React.FC<WhatIfToolbarProps> = ({
                   className="whatif-scenario-select"
                   onChange={handleSelectScenario}
                   defaultValue=""
-                  title="Carica uno scenario salvato in precedenza"
+                  title={msg('whatif.loadScenarioTitle')}
                 >
                   <option value="" disabled>
-                    📂 Carica Scenario ({savedScenarios.length})...
+                    {msg('whatif.loadScenario', { count: savedScenarios.length })}
                   </option>
                   {savedScenarios.map(s => (
                     <option key={s.id} value={s.id}>
@@ -256,7 +263,7 @@ export const WhatIfToolbar: React.FC<WhatIfToolbarProps> = ({
 
             <div className="whatif-actions-right">
               <span style={{ fontSize: '11px', color: '#64748b' }}>
-                * Le percentuali agiscono sui record foglia e riaggregano l'intero albero
+                {msg('whatif.footnote')}
               </span>
             </div>
           </div>

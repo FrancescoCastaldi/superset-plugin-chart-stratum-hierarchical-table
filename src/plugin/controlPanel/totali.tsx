@@ -1,5 +1,6 @@
 import { hasPivot, isTwoWayPivot, metricNamesOf } from './helpers';
 import { ControlPanelConfig } from '@superset-ui/chart-controls';
+import { msg } from '../../i18n';
 
 type Section = ControlPanelConfig['controlPanelSections'][number];
 
@@ -117,7 +118,7 @@ const totaliSection: Section = {
         config: {
           type: 'TextControl',
           label: 'Etichetta totali di riga pivot',
-          default: 'Totals',
+          default: msg('totals.rowLabel'),
           renderTrigger: true,
           description:
             'Titolo della macro-colonna dei totali orizzontali. Esempio: Totale Complessivo.',
@@ -145,7 +146,7 @@ const totaliSection: Section = {
         config: {
           type: 'TextControl',
           label: 'Etichetta subtotale colonna pivot',
-          default: 'Total',
+          default: msg('totals.columnSubtotalLabel'),
           renderTrigger: true,
           description:
             'Titolo della colonna subtotale nei pivot a due dimensioni. Esempio: Totale gruppo.',
