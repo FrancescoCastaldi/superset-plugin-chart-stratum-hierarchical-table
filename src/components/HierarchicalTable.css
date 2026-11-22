@@ -725,18 +725,18 @@
 }
 
 /* Sortable Column Headers & Sort Indicators */
-th.sortable-header {
+.hierarchical-table th.sortable-header {
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   transition: background-color 0.15s ease;
 }
 
-th.sortable-header:hover {
+.hierarchical-table th.sortable-header:hover {
   background-color: var(--st-border, #e2e8f0) !important;
 }
 
-th.sortable-header:focus-visible {
+.hierarchical-table th.sortable-header:focus-visible {
   outline: 2px solid #0d9488;
   outline-offset: -2px;
 }
@@ -762,13 +762,13 @@ th.sortable-header:focus-visible {
   transition: opacity 0.15s ease;
 }
 
-th.sortable-header:hover .sort-indicator-inactive {
+.hierarchical-table th.sortable-header:hover .sort-indicator-inactive {
   opacity: 0.35;
   width: auto;
   margin-left: 4px;
 }
 
-th.sortable-header:hover .sort-indicator-inactive::after {
+.hierarchical-table th.sortable-header:hover .sort-indicator-inactive::after {
   content: ' ⇅';
   font-size: 10px;
 }
