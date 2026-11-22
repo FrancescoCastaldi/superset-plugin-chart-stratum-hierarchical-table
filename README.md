@@ -22,11 +22,31 @@ Frontend visualization plugin for **Apache Superset 6.1.0+** providing a rich, i
 
 *Figure 2: A pivot by year: product line and deal size down the side, years across the top.*
 
+### 🇮🇹 Italian interface and dark theme (v1.0)
+
+All the text of the chart is in Italian and the colours follow the page that hosts it. The next images come from the [Dev Studio](#live-dev-studio-superset-explore-workbench) with the bundled demo scenarios, not from a Superset dashboard.
+
+![Italian interface, light theme](docs/images/ui_tema_chiaro.jpg)
+
+*Figure 3: Light theme. Toolbar, search, row labels and "Totale generale" are in Italian.*
+
+![Dark theme](docs/images/ui_tema_scuro.jpg)
+
+*Figure 4: The same chart on a dark page. Greys and badge colours are derived from the colours of the host page, so no setting is needed.*
+
+![Pivot with data bars](docs/images/ui_pivot.jpg)
+
+*Figure 5: Pivot by quarter with in-cell data bars.*
+
+![What-If simulation](docs/images/ui_whatif.jpg)
+
+*Figure 6: What-If simulation: a +12% on one metric is re-aggregated up the whole tree, with a badge on every changed cell.*
+
 ---
 
 ## 🌟 Key Features
 
-- **Four Macro-Sections Control Panel**: Organized canonically into `Data`, `Customize`, `Comparison & Analysis`, and `Performance & Limits`.
+- **Italian control panel in seven sections**: `Dati`, `Confronto tra periodi`, `Formato dei valori`, `Totali`, `Aspetto`, `Interazione` and `Avanzate`. Every control has a tooltip with an example, and the JSON settings (conditional formatting, goals, Top N limits) have a row editor, with validation for the ones that stay JSON.
 - **Dual-Mode Hierarchy**: Multi-Dimension Level Grouping (e.g. Region, Country, City, Store) and Parent-Child Adjacency (ID / Parent ID / Label).
 - **Time Comparison & Variance**: Time grain, reference period (current, previous, ytd), and comparison strategy (prev_period, prev_year_same_period, budget_target) wired end-to-end against pivot periods.
 - **Paired Calendar Comparison**: when the dashboard's calendar filter sends a comparison period (T2), every value cell gets the same cell for T2 next to it, followed by its deltas (absolute, %, percentage points, ratio), on flat tables and on one or two pivot columns (e.g. Monday 2026 beside Monday 2025). Green/red by metric polarity. The previous single Δ per row is the `row_total` mode.
@@ -164,6 +184,7 @@ Screenshots of real charts in Chrome, on Superset's example sales data.
 ### Dev Studio Features
 
 - **Split-Screen Layout**: Left panel houses the full Superset Explore control panel (5 collapsible accordion sections); right panel displays the live chart rendering; bottom drawer monitors runtime events.
+- **Shareable state**: add `?scenario=sales_pivot&fd={"minMaxDisplayMode":"heatmap"}` to the address to open a scenario with some controls already set (`whatif` turns the What-If bar on).
 - **Interactive Explore Controls**: Toggle hierarchy modes, change rollup aggregations, switch display modes (Values, Delta, Both), configure Table Calculations, enable Diverging Heatmaps and Bipolar Data Bars, adjust privacy suppression thresholds, and tweak virtualization settings with instant re-render.
 - **Built-in Benchmark Scenarios**:
   - *Healthcare & Sanita*: Multi-level regional hierarchy (Regione, ASL, Ospedale, Reparto), admissions, bed occupancy rate, deltas, and privacy suppression (<5).

@@ -24,6 +24,15 @@ export default function App() {
       initial.enableWhatIf = true;
       initial.enable_what_if = true;
     }
+    // ?fd={"minMaxDisplayMode":"heatmap"} sovrascrive alcuni controlli: utile per condividere uno stato o fare uno screenshot.
+    const overrides = p.get('fd');
+    if (overrides) {
+      try {
+        Object.assign(initial, JSON.parse(overrides));
+      } catch {
+        // JSON non valido: si usa lo scenario com'è
+      }
+    }
     return initial;
   });
   const [logs, setLogs] = useState<LogEntry[]>([]);
