@@ -683,7 +683,27 @@ const config: ControlPanelConfig = {
               renderTrigger: true,
               default: true,
               description:
-                'Aggiunge la riga riepilogativa complessiva di tutta la gerarchia in cima alla tabella.',
+                'Aggiunge la riga riepilogativa complessiva di tutta la gerarchia, in cima o in fondo secondo la posizione scelta.',
+            },
+          },
+        ],
+        [
+          {
+            name: 'grandTotalPosition',
+            config: {
+              type: 'SelectControl',
+              label: 'Posizione del Grand Total',
+              default: 'top',
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                ['top', 'In cima alla tabella'],
+                ['bottom', 'In fondo alla tabella'],
+              ],
+              description:
+                'Dove collocare la riga del totale generale. Esempio: In fondo per leggere prima i dettagli e poi il totale.',
+              visibility: ({ controls }: { controls: any }) =>
+                controls?.showGrandTotal?.value !== false,
             },
           },
         ],
@@ -701,6 +721,7 @@ const config: ControlPanelConfig = {
                 ['avg', 'Media aritmetica dei figli'],
                 ['min', 'Minimo'],
                 ['max', 'Massimo'],
+                ['count', 'Conteggio dei figli'],
                 ['weighted_avg', 'Media ponderata (con metrica peso)'],
               ],
               description:
@@ -1068,7 +1089,7 @@ const config: ControlPanelConfig = {
               default: [],
               renderTrigger: true,
               description:
-                'Elenco JSON di soglie personalizzate per colorare o aggiungere icone a celle e righe. Esempio: [{"metric":"attesa","operator":">","targetValue":30,"bgHex":"#fee2e2"}].',
+                'Elenco JSON di soglie personalizzate per colorare o aggiungere icone a celle e righe. Operatori: >, >=, <, <=, ==, between, regex. Esempio: [{"metric":"attesa","operator":">","targetValue":30,"backgroundColor":"#fee2e2"}].',
             },
           },
         ],
@@ -1261,7 +1282,7 @@ const config: ControlPanelConfig = {
               default: '',
               renderTrigger: true,
               description:
-                'Array JSON per aggiungere colonne calcolate lato client (% sul totale, % sul padre, ranking, delta dal totale). Esempio: [{"type":"pct_of_total","metric":"ricavi"}].',
+                'Array JSON per aggiungere colonne calcolate lato client. Tipi: pct_of_total (% sul totale), pct_of_parent (% sul padre), running_total (cumulativo), diff_from_previous, diff_from_previous_pct, rank (classifica). Esempio: [{"type":"pct_of_total","metric":"ricavi"}].',
             },
           },
         ],
@@ -1275,7 +1296,7 @@ const config: ControlPanelConfig = {
               default: '',
               renderTrigger: true,
               description:
-                'Array JSON di target per ciascuna metrica per mostrare scostamento dall\'obiettivo e badge raggiunto/non raggiunto. Esempio: [{"metric":"accessi","target":1000}].',
+                'Array JSON di target per ciascuna metrica per mostrare scostamento dall\'obiettivo e badge raggiunto/non raggiunto. Campi: metric (nome della metrica), target (numero), direction (higher_is_better oppure lower_is_better, facoltativo). Esempio: [{"metric":"accessi","target":1000}].',
             },
           },
         ],
@@ -1382,7 +1403,7 @@ const config: ControlPanelConfig = {
               default: '',
               renderTrigger: true,
               description:
-                'Array JSON per mostrare solo i primi N elementi per livello gerarchico raggruppando il resto in "Altro". Esempio: [{"dimension":"reparto","limit":10}].',
+                'Array JSON per mostrare solo i primi N elementi per livello gerarchico raggruppando il resto in una riga "Altri (n)" aggregata come i nodi padre. Esempio: [{"dimension":"reparto","limit":10}].',
             },
           },
         ],

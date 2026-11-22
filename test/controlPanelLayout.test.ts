@@ -43,6 +43,7 @@ const EXPECTED_CONTROL_NAMES = [
   'valueDisplayMode',
   'showSubtotals',
   'showGrandTotal',
+  'grandTotalPosition',
   'stickyHeader',
   'enableSearch',
   'compactMode',
@@ -274,6 +275,7 @@ describe('controlPanel layout', () => {
     expect(opts.valueDisplayMode).toBe(controlByName('valueDisplayMode').config.default);
     expect(opts.showSubtotals).toBe(controlByName('showSubtotals').config.default);
     expect(opts.showGrandTotal).toBe(controlByName('showGrandTotal').config.default);
+    expect(opts.grandTotalPosition).toBe(controlByName('grandTotalPosition').config.default);
     expect(opts.stickyHeader).toBe(controlByName('stickyHeader').config.default);
     expect(opts.enableSearch).toBe(controlByName('enableSearch').config.default);
     expect(opts.compactMode).toBe(controlByName('compactMode').config.default);

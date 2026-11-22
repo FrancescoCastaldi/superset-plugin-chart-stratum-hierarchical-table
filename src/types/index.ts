@@ -89,7 +89,8 @@ export interface ConditionalFormattingRule {
   /** Threshold of the comparison operators, or the pattern of the regex operator. */
   targetValue: number | string;
   targetValue2?: number;
-  colorScheme: 'red_green' | 'green_red' | 'blues' | 'custom';
+  /** Declared for compatibility with saved charts; the rendering only reads the colours below. */
+  colorScheme?: 'red_green' | 'green_red' | 'blues' | 'custom';
   backgroundColor?: string;
   textColor?: string;
   highlightRow?: boolean;

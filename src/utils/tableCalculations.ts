@@ -252,7 +252,11 @@ export function normalizeTableCalculations(
       rankMethod: cfg.rankMethod === 'dense' ? 'dense' : 'competition',
       rankOrder: cfg.rankOrder === 'asc' ? 'asc' : 'desc',
       displayMode: cfg.displayMode === 'replace' ? 'replace' : 'companion_column',
-      customTitle: typeof cfg.customTitle === 'string' ? cfg.customTitle.trim() : undefined,
+      // Un titolo vuoto o di soli spazi equivale a nessun titolo: vale quello predefinito.
+      customTitle:
+        typeof cfg.customTitle === 'string' && cfg.customTitle.trim() !== ''
+          ? cfg.customTitle.trim()
+          : undefined,
     });
   };
 

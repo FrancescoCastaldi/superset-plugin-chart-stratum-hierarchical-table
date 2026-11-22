@@ -4,7 +4,10 @@ import {
   MetricFormat,
   MetricPolarity,
   MetricType,
+  RankMethod,
   SignalReference,
+  TableCalculationScope,
+  TableCalculationType,
   TreeNode,
 } from '../types';
 import { weightedMean } from './aggregations';
@@ -15,6 +18,18 @@ const POLARITIES: readonly MetricPolarity[] = ['higher_is_better', 'lower_is_bet
 const CI_METHODS: readonly ConfidenceMethod[] = ['none', 'wilson', 'poisson'];
 const SIGNAL_REFERENCES: readonly SignalReference[] = ['parent', 'total', 'goal'];
 const CI_LEVELS = [0.9, 0.95, 0.99, 0.998];
+const CALCULATION_TYPES: readonly TableCalculationType[] = [
+  'pct_of_total',
+  'pct_of_parent',
+  'running_total',
+  'diff_from_previous',
+  'diff_from_previous_pct',
+  'rank',
+];
+const CALCULATION_SCOPES: readonly TableCalculationScope[] = ['hierarchy', 'periods'];
+const RANK_METHODS: readonly RankMethod[] = ['competition', 'dense'];
+const RANK_ORDERS: readonly ('desc' | 'asc')[] = ['desc', 'asc'];
+const CALCULATION_DISPLAY_MODES: readonly ('replace' | 'companion_column')[] = ['replace', 'companion_column'];
 
 const text = (raw: unknown): string => (typeof raw === 'string' ? raw.trim() : '');
 
@@ -75,6 +90,19 @@ export function normalizeMetricDefinitions(raw: unknown): MetricDefinition[] {
     if (decimals !== undefined && decimals >= 0 && decimals <= 6) def.decimals = Math.floor(decimals);
     const polarity = pick(POLARITIES, e.polarity);
     if (polarity) def.polarity = polarity;
+    // Calcolo di tabella dichiarato nella definizione: lo legge normalizeTableCalculations.
+    const calculation = pick(CALCULATION_TYPES, e.calculation);
+    if (calculation) {
+      def.calculation = calculation;
+      const scope = pick(CALCULATION_SCOPES, e.calculationScope);
+      if (scope) def.calculationScope = scope;
+      const rankMethod = pick(RANK_METHODS, e.rankMethod);
+      if (rankMethod) def.rankMethod = rankMethod;
+      const rankOrder = pick(RANK_ORDERS, e.rankOrder);
+      if (rankOrder) def.rankOrder = rankOrder;
+      const displayMode = pick(CALCULATION_DISPLAY_MODES, e.calculationDisplayMode);
+      if (displayMode) def.calculationDisplayMode = displayMode;
+    }
     if (type === 'ratio') {
       const ci = pick(CI_METHODS, e.ci);
       if (ci && ci !== 'none') {

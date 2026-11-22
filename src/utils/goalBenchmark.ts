@@ -74,31 +74,64 @@ export function toFiniteNumber(value: unknown): number | null {
 
 /**
  * Accepts the `goals` control value (a JSON text or an already parsed array) and keeps only
- * well-formed entries. A missing direction defaults to higher_is_better; any other unknown
- * direction drops the entry.
+ * well-formed entries. The metric is read from `metricKey` or, as an alias, from `metric` (the
+ * name used by the other JSON controls). A missing direction defaults to higher_is_better; any
+ * other unknown direction drops the entry.
  */
 export function normalizeGoals(raw: unknown): MetricGoal[] {
+  return inspectGoals(raw).goals;
+}
+
+export interface GoalsInspection {
+  goals: MetricGoal[];
+  /** Human-readable reason for every entry that was dropped, with its 1-based position. */
+  dropped: string[];
+  /** Set when the text is not valid JSON or not an array. */
+  syntaxError?: string;
+}
+
+/** Same rules as `normalizeGoals`, but reports why each entry was dropped. */
+export function inspectGoals(raw: unknown): GoalsInspection {
   let entries: unknown = raw;
   if (typeof raw === 'string') {
-    if (raw.trim() === '') return [];
+    if (raw.trim() === '') return { goals: [], dropped: [] };
     try {
       entries = JSON.parse(raw);
-    } catch {
-      return [];
+    } catch (error) {
+      return { goals: [], dropped: [], syntaxError: (error as Error).message };
     }
   }
-  if (!Array.isArray(entries)) return [];
+  if (!Array.isArray(entries)) {
+    return { goals: [], dropped: [], syntaxError: 'Deve essere un elenco tra parentesi quadre [ ].' };
+  }
 
   const goals: MetricGoal[] = [];
-  for (const entry of entries) {
-    if (!entry || typeof entry !== 'object') continue;
-    const { metricKey, target, direction = 'higher_is_better' } = entry as Record<string, unknown>;
-    const numericTarget = toFiniteNumber(target);
-    if (typeof metricKey !== 'string' || metricKey.trim() === '' || numericTarget === null) continue;
-    if (!GOAL_DIRECTIONS.includes(direction as GoalDirection)) continue;
+  const dropped: string[] = [];
+  entries.forEach((entry, index) => {
+    const position = index + 1;
+    if (!entry || typeof entry !== 'object') {
+      dropped.push(`Obiettivo ${position}: non è un oggetto.`);
+      return;
+    }
+    const record = entry as Record<string, unknown>;
+    const metricKey = record.metricKey ?? record.metric;
+    const direction = record.direction ?? 'higher_is_better';
+    const numericTarget = toFiniteNumber(record.target);
+    if (typeof metricKey !== 'string' || metricKey.trim() === '') {
+      dropped.push(`Obiettivo ${position}: manca "metric" (nome della metrica).`);
+      return;
+    }
+    if (numericTarget === null) {
+      dropped.push(`Obiettivo ${position}: "target" deve essere un numero.`);
+      return;
+    }
+    if (!GOAL_DIRECTIONS.includes(direction as GoalDirection)) {
+      dropped.push(`Obiettivo ${position}: "direction" deve essere higher_is_better o lower_is_better.`);
+      return;
+    }
     goals.push({ metricKey, target: numericTarget, direction: direction as GoalDirection });
-  }
-  return goals;
+  });
+  return { goals, dropped };
 }
 
 /**

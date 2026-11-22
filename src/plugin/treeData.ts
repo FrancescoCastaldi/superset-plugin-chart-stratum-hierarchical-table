@@ -72,7 +72,13 @@ export function buildTreeData(
         );
 
   if (options.dimensionLimits && options.dimensionLimits.length > 0) {
-    treeData = applyDimensionLimits(treeData, options.dimensionLimits, metrics[0]);
+    treeData = applyDimensionLimits(treeData, options.dimensionLimits, metrics[0], {
+      metricNames: metrics,
+      aggregationMode: options.aggregationMode,
+      weightColumn: options.weightColumn,
+      dimensions,
+      timeMetrics,
+    });
   }
 
   const isFlat = !pivotDimensions || pivotDimensions.length === 0;

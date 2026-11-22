@@ -1,4 +1,5 @@
-import { DimensionLimitMode, DimensionLimitRule, TreeNode } from '../types';
+import { AggregationFunction, DimensionLimitMode, DimensionLimitRule, TreeNode } from '../types';
+import { rollupFunction, rollupTreeMetrics } from './aggregations';
 
 export type { DimensionLimitMode, DimensionLimitRule };
 
@@ -103,10 +104,17 @@ function getNumericMetric(node: TreeNode, metricKey?: string): number | null {
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
 }
 
-/**
- * Aggregates metrics from an excluded group of nodes to construct the synthetic 'Others' row.
- */
-function aggregateExcludedMetrics(nodes: TreeNode[]): Record<string, number | string | null> {
+/** Come si aggregano i nodi esclusi nella riga "Altri": stessa regola dei nodi padre. */
+export interface OthersRollupOptions {
+  metricNames: string[];
+  aggregationMode?: AggregationFunction;
+  weightColumn?: string;
+  dimensions?: string[];
+  timeMetrics?: ReadonlySet<string>;
+}
+
+/** Somma semplice, usata quando non si conosce la regola di aggregazione del grafico. */
+function sumExcludedMetrics(nodes: TreeNode[]): Record<string, number | string | null> {
   const result: Record<string, number | string | null> = {};
   const metricKeys = new Set<string>();
 
@@ -137,12 +145,55 @@ function aggregateExcludedMetrics(nodes: TreeNode[]): Record<string, number | st
 }
 
 /**
+ * Metriche della riga "Altri". Con le opzioni di roll-up usa la stessa funzione dei nodi padre
+ * (somma, media, minimo, massimo, media ponderata, tassi), su copie dei nodi esclusi per non
+ * toccare quelli originali; senza opzioni somma.
+ */
+function aggregateExcludedMetrics(
+  nodes: TreeNode[],
+  rollup?: OthersRollupOptions,
+): Record<string, number | string | null> {
+  if (!rollup || rollup.metricNames.length === 0) return sumExcludedMetrics(nodes);
+
+  const children: TreeNode[] = nodes.map(n => ({
+    ...n,
+    children: undefined,
+    metrics: { ...n.metrics },
+    subtotals: n.subtotals ? { ...n.subtotals } : undefined,
+  }));
+  const probe: TreeNode = {
+    key: '__others_probe__',
+    id: '__others_probe__',
+    name: '',
+    dimension: nodes[0]?.dimension ?? '',
+    depth: Math.max(0, (nodes[0]?.depth ?? 1) - 1),
+    path: [],
+    isLeaf: false,
+    metrics: {},
+    children,
+  };
+  const weightColumn = rollup.weightColumn ?? '';
+  const aggFunc = rollupFunction(weightColumn, rollup.aggregationMode);
+  rollupTreeMetrics([probe], rollup.metricNames, aggFunc, weightColumn, rollup.dimensions, rollup.timeMetrics);
+
+  const result: Record<string, number | string | null> = {};
+  for (const key of Object.keys(probe.metrics)) result[key] = probe.metrics[key] ?? null;
+  // Colonne non coperte dai nomi di metrica (per esempio confronti): somma come prima.
+  const fallback = sumExcludedMetrics(nodes);
+  for (const key of Object.keys(fallback)) {
+    if (!(key in result)) result[key] = fallback[key];
+  }
+  return result;
+}
+
+/**
  * Recursively applies dimension limits (Top N + Others) to a tree structure.
  */
 export function applyDimensionLimits(
   treeData: TreeNode[],
   rules: DimensionLimitRule[],
   defaultMetric?: string,
+  rollup?: OthersRollupOptions,
 ): TreeNode[] {
   if (!treeData || treeData.length === 0 || !rules || rules.length === 0) {
     return treeData;
@@ -195,7 +246,7 @@ export function applyDimensionLimits(
           isLeaf: true,
           isOthers: true,
           othersCount: excluded.length,
-          metrics: aggregateExcludedMetrics(excluded),
+          metrics: aggregateExcludedMetrics(excluded, rollup),
         };
 
         currentSiblings = [...kept, othersNode];
