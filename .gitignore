@@ -83,3 +83,7 @@ aggiorna-tutti-i-chart.bat
 metti-tutti-i-chart-privati.bat
 metti-tutti-i-chart-pubblici.bat
 pull-tutti-i-chart.bat
+
+# macOS AppleDouble su volumi exFAT
+._*
+.DS_Store

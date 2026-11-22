@@ -414,7 +414,7 @@ export function filterTreeBySearch(nodes: TreeNode[], searchTerm: string): TreeN
   function searchNode(node: TreeNode): TreeNode | null {
     const nameMatches = node.name.toLowerCase().includes(term);
 
-    let matchingChildren: TreeNode[] = [];
+    const matchingChildren: TreeNode[] = [];
     if (node.children && node.children.length > 0) {
       for (const child of node.children) {
         const filteredChild = searchNode(child);

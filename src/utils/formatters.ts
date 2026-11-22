@@ -126,7 +126,7 @@ export function formatMetricValue(
       // Italian localized thousands separator (e.g. 1.250)
       formatted = SMART_FORMAT.format(value);
     }
-  } catch (e) {
+  } catch {
     formatted = String(value);
   }
 

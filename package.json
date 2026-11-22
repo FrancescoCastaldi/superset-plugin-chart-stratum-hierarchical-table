@@ -23,9 +23,11 @@
     "build": "(tsc --project tsconfig.json --emitDeclarationOnly || node ../../node_modules/typescript/lib/tsc.js --project tsconfig.json --emitDeclarationOnly || npx tsc --project tsconfig.json --emitDeclarationOnly) && npm run build:esm",
     "build:esm": "node scripts/build.mjs",
     "clean": "rimraf dist",
-    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "lint": "eslint src",
     "test": "node ./node_modules/jest/bin/jest.js --preset=ts-jest || node ../../node_modules/jest/bin/jest.js --preset=ts-jest",
-    "test:watch": "node ./node_modules/jest/bin/jest.js --preset=ts-jest --watch || node ../../node_modules/jest/bin/jest.js --preset=ts-jest --watch"
+    "test:watch": "node ./node_modules/jest/bin/jest.js --preset=ts-jest --watch || node ../../node_modules/jest/bin/jest.js --preset=ts-jest --watch",
+    "typecheck": "tsc --noEmit -p tsconfig.json || node ./node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
   },
   "keywords": [
     "stratum",
@@ -60,16 +62,23 @@
     "classnames": "^2.3.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@superset-ui/core": "^0.20.4",
     "@types/jest": "^29.5.12",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "esbuild": "^0.25.12",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^15.15.0",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "prettier": "^3.10.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "rimraf": "^5.0.5",
     "ts-jest": "^29.1.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.73.0"
   }
 }
