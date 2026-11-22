@@ -17,7 +17,10 @@ Plugin di visualizzazione tabellare gerarchica per Apache Superset (chiave `hier
 | `src/plugin/buildQuery.ts` | Costruisce la query; passa `time_offsets` quando il filtro Calendar manda un periodo di confronto (T2) |
 | `src/plugin/transformProps.ts` | Pipeline dati: albero, layout colonne, totale generale, definizioni di metrica |
 | `src/plugin/formDataOptions.ts` | Normalizza i controlli del pannello (`TransformOptions`) |
-| `src/plugin/controlPanel.tsx` | Pannello di controllo di Explore, quattro macro-sezioni |
+| `src/plugin/controlPanel/` | Pannello di Explore in sette sezioni italiane, un file per sezione, più `helpers.tsx` con le regole di visibilità |
+| `src/plugin/controls/` | Controlli personalizzati: `RowListControl` (editor a righe), `JsonTextControl` (JSON con errori in linea), `listModel.ts`, `specs.ts` |
+| `src/plugin/legacyMigration.ts` | Lettura dei controlli sostituiti (`endOfSeriesBaseline`, colori) e valori iniziali per Explore |
+| `src/i18n/` | Dizionario italiano di tutti i testi visibili, con `msg(chiave, parametri)` |
 | `src/plugin/metricLayout.ts` | Sceglie e costruisce le colonne: piatto, pivot singolo, pivot a due livelli |
 | `src/plugin/columnBuilders.ts` | Costruttori delle colonne e delle intestazioni raggruppate |
 | `src/plugin/pairedComparison.ts` | **Confronto accoppiato** (v0.16.0): colonne confronto e Δ accanto a ogni cella, calcolo di `___diff`, `___delta`, `___pp`, `___ratio` |
@@ -27,8 +30,11 @@ Plugin di visualizzazione tabellare gerarchica per Apache Superset (chiave `hier
 | `src/utils/timeValues.ts` | Metriche Time: lettura di `HH:MM:SS.ffffff` e ISO 8601 in secondi, formati di visualizzazione, ruolo (valore, differenza, percentuale) di una colonna |
 | `src/utils/timeMetricRegistry.ts` | Nomi delle metriche che contengono durate, letto da roll-up, totali di riga e confronto per fare la media invece della somma |
 | `src/utils/aggregations.ts` | Rollup, metriche derivate, totali di riga del pivot |
-| `src/components/HierarchicalTable.tsx` | Rendering della tabella, badge Δ colorati per polarità |
-| `test/` | Suite Jest (53 file); `pairedComparison.test.ts` copre il confronto accoppiato su tre layout |
+| `src/components/HierarchicalTable.tsx` | Composizione della tabella (circa 530 righe) dentro un `ErrorBoundary` |
+| `src/components/HierarchicalTableRow.tsx`, `GrandTotalRow.tsx`, `TableToolbar.tsx`, `TableHeader.tsx` | Righe, totale generale, barra degli strumenti e intestazioni (pivot e piatta) |
+| `src/components/cells/` | Badge (obiettivi, intervalli, variazioni, What-If), aspetto delle celle e `findVarianceDelta`, condivisi da righe e totale |
+| `src/components/hooks/` | `useWhatIf`, `useExpandedKeys`, `useMetricDrag`, `useHeaderSort`, `useRowHeight`, `useHostColors`, `useContainerWidth`, `useCsvExport` |
+| `test/` | Suite Jest (67 file); `pairedComparison.test.ts` copre il confronto accoppiato su tre layout |
 | `dev-studio/`, `examples/`, `docs/` | Banco prove interattivo, esempi, documentazione e immagini |
 | `install-plugin.ps1`, `install.bat` | Installer verso `MainPreset.ts` di Superset |
 

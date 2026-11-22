@@ -49,6 +49,9 @@ export interface HierarchicalTableRowProps {
   onToggleExpand: (key: string) => void;
   onNodeClick: (node: TreeNode) => void;
   onContextMenu?: (e: React.MouseEvent, node: TreeNode, col?: TableColumn) => void;
+  /** Riga raggiungibile con Tab; le altre si raggiungono con le frecce (un solo punto di sosta per la tabella). */
+  tabbable?: boolean;
+  onFocusRow?: (key: string) => void;
 }
 
 /** Una riga dell'albero: nome del nodo con espansione e filtro, poi una cella per ogni colonna. */
@@ -73,6 +76,8 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
   onToggleExpand,
   onNodeClick,
   onContextMenu,
+  tabbable = false,
+  onFocusRow,
 }: HierarchicalTableRowProps) {
   const hasChildren = Boolean(node.children && node.children.length > 0);
   const paddingLeft = node.depth * 20 + 8;
@@ -232,6 +237,15 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
   return (
     <tr
       data-tree-row=""
+      data-node-key={node.key}
+      role="row"
+      aria-level={node.depth + 1}
+      aria-expanded={hasChildren ? isExpanded : undefined}
+      aria-selected={isFilterSelected || undefined}
+      tabIndex={tabbable ? 0 : -1}
+      onFocus={e => {
+        if (e.target === e.currentTarget) onFocusRow?.(node.key);
+      }}
       className={classNames({
         'parent-row': hasChildren,
         'selected-filter-row': isFilterSelected,

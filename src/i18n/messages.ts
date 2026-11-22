@@ -5,6 +5,7 @@
  */
 export const MESSAGES = {
   // Albero
+  'table.label': 'Tabella gerarchica',
   'tree.expand': 'Espandi',
   'tree.collapse': 'Comprimi',
   'tree.selectNode': 'Seleziona {name} per filtrare gli altri grafici',

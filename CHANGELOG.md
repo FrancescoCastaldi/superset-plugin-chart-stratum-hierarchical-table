@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-22
+
+Production hardening: the chart is easier to set up, fully in Italian, safer to render and follows the page theme. Saved charts keep working; see *Migration* for the controls that changed.
+
+### Added
+- **Row editors for the JSON controls.** Conditional formatting, goals and Top N limits are edited as rows (metric picker, operator, colours, "add" and "insert example" buttons) and still save the same value as before, so saved charts and the parsers are untouched. Metric definitions and table calculations stay JSON, now with an inline syntax error (it blocks Run and Save with its message), a warning for the entries the chart would ignore, a list of accepted fields and an example.
+- **Every control description carries an example**, checked by a test. Wrong examples were fixed (`goals` used `metric` while the parser read `metricKey`; conditional formatting used `bgHex` instead of `backgroundColor`).
+- **Grand Total position** control (`grandTotalPosition`, top or bottom), which charts already stored but the panel did not expose, and the `count` aggregation.
+- **Italian dictionary** (`src/i18n`) for every visible text: toolbar, badges, tooltips, aria labels, empty states, What-If, CSV headers, comparison column titles and the chart metadata. SVG icons replace the emoji.
+- **Dark theme.** The chart reads the text and background colours of the host page and derives its greys with `color-mix`; in a light page nothing changes. The font is inherited from Superset.
+- **Keyboard and screen readers.** The table is a `treegrid` with `aria-level`, `aria-expanded` and `aria-selected`; one row is reachable with Tab and the arrows, Home, End, Enter and Space move, expand and filter; focus outlines on rows, buttons and fields; faint text raised to 4.5:1 on white.
+- **States and errors.** Distinct messages for no data, no metric, no dimension and a search without results; an error boundary that shows a message instead of an empty card and recovers when the data change; a warning icon when a theme colour is ignored.
+- `ESLint 9`, `npm run lint`, `npm run typecheck`, `npm run format:check`, and `npm run docs`, which regenerates `docs/control_panel_reference.md` from the panel configuration (a test checks it is current).
+- The Dev Studio opens a scenario with some controls already set through `?fd={...}`.
+
+### Changed
+- **Control panel.** The end-of-series comparison is one control, `endOfSeriesBaseline` (none, previous period, YTD average, same period last year, goal), replacing `comparisonType` and `referencePeriod`; the grain control shows only when a baseline is chosen. The custom colours use the native colour picker. Default sort controls show only with header sorting on, and *Group metrics under each pivot value* only with a single pivot column. The panel is split in one file per section (`src/plugin/controlPanel/`).
+- **`HierarchicalTable.tsx` goes from 1830 to about 530 lines**: rows, grand total row, toolbar and headers are components, the state lives in hooks (`useWhatIf`, `useExpandedKeys`, `useMetricDrag`, `useHeaderSort`, `useRowHeight`, `useHostColors`, `useCsvExport`).
+- The grand total now reads the `delta_X_pct` companion metrics for its variance badge, like the rows (it used to skip them).
+- The Others row of a Top N limit is aggregated like a parent row (sum, average, minimum, maximum, weighted average, rates) instead of always summing.
+- Default titles of the pivot totals are `Totale` and `Totale gruppo`. `Grand Total` and `(Empty)` stay the internal identifiers and are translated only when shown.
+- Parent and leaf nodes follow new data: nodes that appear get the initial expand depth, the ones already seen keep the user's choice, and changing the initial depth applies it (it was read once).
+- A local What-If simulation now takes precedence over a baseline sent by the dashboard.
+- The virtual window uses the measured row height (it assumed 32 px against about 40 px of CSS, so the scrollbar jumped) and covers the chart height.
+
+### Fixed
+- A malformed or unaccepted entry in a JSON control is no longer silent in the panel.
+- `metricDefinitions` keeps the `calculation*` fields, which were declared and read but never copied.
+- An empty `customTitle` of a table calculation falls back to the default title.
+- `jest-environment-jsdom`, used by four test suites, is now declared in `package.json`.
+
+### Removed
+- The `pageSize` control (the window follows the chart height). Saved values are ignored.
+- Unreachable snake_case aliases in `formDataOptions` (`enable_export`, `combine_metric`, `show_rollup_totals`, `subtotals_enabled`, `show_grand_total`, `grand_total_enabled`, `show_pivot_column_subtotals`); they never had an effect.
+
+### Migration
+- `comparisonType` and `referencePeriod` map to `endOfSeriesBaseline` (previous period with the active period meant no comparison, now `none`). Dashboards keep reading the old keys; opening the chart in Explore fills the new control, and saving writes it. Superset drops keys without a control on save, so a chart saved from Explore needs no further step.
+- The custom colour controls keep their names; `#RRGGBB` values are converted to the picker format when the chart is opened and are read in both formats.
+- Kept on purpose, although the first plan removed them: `showVarianceDelta` (it also drives the flat-table row deltas and the cell badges, so it is not an alias of the pivot delta), `time_grain_sqla` and `expandAllByDefault` (reachable from charts created through the API).
+
 ## [0.18.0] - 2026-11-11
 
 ### Fixed

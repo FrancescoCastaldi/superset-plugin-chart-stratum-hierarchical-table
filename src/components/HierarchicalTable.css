@@ -62,7 +62,7 @@
   right: 6px;
   background: none;
   border: none;
-  color: var(--st-text-faint, #9ca3af);
+  color: var(--st-text-faint, #6b7280);
   cursor: pointer;
   font-size: 11px;
   padding: 2px 4px;
@@ -347,7 +347,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--st-text-faint, #9ca3af);
+  color: var(--st-text-faint, #6b7280);
   font-size: 14px;
 }
 
@@ -921,7 +921,7 @@ th.sortable-header:hover .sort-indicator-inactive::after {
 
 .hierarchical-table th .drag-handle-icon {
   margin-right: 4px;
-  color: var(--st-text-faint, #9ca3af);
+  color: var(--st-text-faint, #6b7280);
   font-size: 11px;
   cursor: grab;
   user-select: none;
@@ -1085,4 +1085,18 @@ th.sortable-header:hover .sort-indicator-inactive::after {
     --st-tint-red: color-mix(in srgb, #ef4444 22%, var(--st-host-bg));
     --st-tint-amber: color-mix(in srgb, #f59e0b 22%, var(--st-host-bg));
   }
+}
+
+/* Tastiera: il punto di fuoco si vede su righe, pulsanti e campi */
+.superset-hierarchical-table-container tr[data-tree-row]:focus-visible {
+  outline: 2px solid var(--st-info, #2563eb);
+  outline-offset: -2px;
+}
+
+.superset-hierarchical-table-container button:focus-visible,
+.superset-hierarchical-table-container select:focus-visible,
+.superset-hierarchical-table-container input:focus-visible,
+.superset-hierarchical-table-container th[tabindex]:focus-visible {
+  outline: 2px solid var(--st-info, #2563eb);
+  outline-offset: 2px;
 }

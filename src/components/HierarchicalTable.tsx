@@ -297,6 +297,7 @@ function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
     return rows;
   }, [filteredData, expandedKeys, hasSearch]);
 
+  const [focusKey, setFocusKey] = useState<string | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const tbodyRef = useRef<HTMLTableSectionElement>(null);
   const rowHeight = useRowHeight(tbodyRef, compactMode, visibleRows[0]?.key);
@@ -357,6 +358,66 @@ function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
     const metricKeys = displayCols.map(c => c.key);
     return calculateMinMaxBounds(effectiveTreeData, metricKeys, minMaxScope);
   }, [effectiveTreeData, displayCols, minMaxDisplayMode, minMaxScope]);
+
+  const tabbableKey = rows.some(r => r.key === focusKey) ? focusKey : rows[0]?.key;
+
+  /** Navigazione con la tastiera nell'albero: frecce, Home, Fine, Invio e Spazio sulla riga a fuoco. */
+  const handleBodyKeyDown = (e: React.KeyboardEvent<HTMLTableSectionElement>) => {
+    const rowEl = e.target as HTMLElement;
+    if (!rowEl.matches?.('tr[data-tree-row]')) return;
+    const bodyRows = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('tr[data-tree-row]'));
+    const index = bodyRows.indexOf(rowEl);
+    const node = visibleRows.find(n => n.key === rowEl.dataset.nodeKey);
+    if (index < 0 || !node) return;
+    const focusAt = (target?: HTMLElement) => {
+      if (!target) return;
+      e.preventDefault();
+      target.focus();
+    };
+    const hasChildren = Boolean(node.children && node.children.length > 0);
+    const isOpen = hasChildren && (expandedKeys.has(node.key) || hasSearch);
+
+    switch (e.key) {
+      case 'ArrowDown':
+        return focusAt(bodyRows[index + 1]);
+      case 'ArrowUp':
+        return focusAt(bodyRows[index - 1]);
+      case 'Home':
+        return focusAt(bodyRows[0]);
+      case 'End':
+        return focusAt(bodyRows[bodyRows.length - 1]);
+      case 'ArrowRight':
+        if (hasChildren && !isOpen) {
+          e.preventDefault();
+          toggleExpand(node.key);
+        } else if (isOpen) {
+          focusAt(bodyRows[index + 1]);
+        }
+        return;
+      case 'ArrowLeft': {
+        if (isOpen && !hasSearch) {
+          e.preventDefault();
+          toggleExpand(node.key);
+          return;
+        }
+        const at = visibleRows.findIndex(n => n.key === node.key);
+        for (let i = at - 1; i >= 0; i -= 1) {
+          if (visibleRows[i].depth < node.depth) {
+            return focusAt(bodyRows.find(r => r.dataset.nodeKey === visibleRows[i].key));
+          }
+        }
+        return;
+      }
+      case 'Enter':
+      case ' ':
+        if (emitFilter) {
+          e.preventDefault();
+          handleNodeClick(node);
+        }
+        return;
+      default:
+    }
+  };
 
   const { exportCsv, exportWhatIfCsv } = useCsvExport({
     columns,
@@ -474,6 +535,9 @@ function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
             'wrap-labels': wrapHeaderLabels,
             'resizable-columns': resizableColumns,
           })}
+          role="treegrid"
+          aria-label={msg('table.label')}
+          aria-multiselectable={emitFilter || undefined}
           style={{
             ...fixedTableStyle,
             ...(firstHeaderRowHeight ? ({ '--pivot-sub-top': `${firstHeaderRowHeight}px` } as React.CSSProperties) : {}),
@@ -493,7 +557,7 @@ function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
               <FlatHeader ctx={headerContext} />
             )}
           </thead>
-          <tbody ref={tbodyRef}>
+          <tbody ref={tbodyRef} onKeyDown={handleBodyKeyDown}>
             {grandTotalPosition === 'top' && grandTotalRow}
 
             {renderWindow.padTop > 0 && <tr style={{ height: renderWindow.padTop }} />}
@@ -521,6 +585,8 @@ function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
                 onToggleExpand={toggleExpand}
                 onNodeClick={handleNodeClick}
                 onContextMenu={handleContextMenu}
+                tabbable={node.key === tabbableKey}
+                onFocusRow={setFocusKey}
               />
             ))}
             {hasSearch && visibleRows.length === 0 && (
