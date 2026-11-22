@@ -96,7 +96,6 @@ const EXPECTED_CONTROL_NAMES = [
   'crossFilterAppliesToSelf',
   'enableContextMenu',
   'enableWhatIf',
-  'pageSize',
   'virtualizationThreshold',
   'dimensionLimits',
 ];

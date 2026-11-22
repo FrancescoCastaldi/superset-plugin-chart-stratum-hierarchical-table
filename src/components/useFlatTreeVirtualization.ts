@@ -37,9 +37,9 @@ export function sliceRenderWindow<T>(tree: T[], options: VirtualizationOptions) 
 }
 
 export function useFlatTreeVirtualization<T>(tree: T[], options: VirtualizationOptions) {
-  const { threshold, pageSize, scrollTop } = options;
+  const { threshold, pageSize, scrollTop, rowHeight, buffer } = options;
   return useMemo(
-    () => sliceRenderWindow(tree, { threshold, pageSize, scrollTop }),
-    [tree, threshold, pageSize, scrollTop],
+    () => sliceRenderWindow(tree, { threshold, pageSize, scrollTop, rowHeight, buffer }),
+    [tree, threshold, pageSize, scrollTop, rowHeight, buffer],
   );
 }

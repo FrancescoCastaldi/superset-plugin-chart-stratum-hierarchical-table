@@ -262,7 +262,7 @@ export const WhatIfToolbar: React.FC<WhatIfToolbarProps> = ({
             </div>
 
             <div className="whatif-actions-right">
-              <span style={{ fontSize: '11px', color: '#64748b' }}>
+              <span style={{ fontSize: '11px', color: 'var(--st-text-muted, #64748b)' }}>
                 {msg('whatif.footnote')}
               </span>
             </div>

@@ -171,7 +171,7 @@ export function PivotHeader({ ctx }: { ctx: HeaderContext }) {
               onSort={() => ctx.onSort(group.key)}
               style={{
                 textAlign: 'center',
-                borderBottom: '1px solid #d1d5db',
+                borderBottom: '1px solid var(--st-border-strong, #d1d5db)',
                 cursor: enableSort || draggable ? 'pointer' : undefined,
               }}
             >

@@ -231,6 +231,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
 
   return (
     <tr
+      data-tree-row=""
       className={classNames({
         'parent-row': hasChildren,
         'selected-filter-row': isFilterSelected,

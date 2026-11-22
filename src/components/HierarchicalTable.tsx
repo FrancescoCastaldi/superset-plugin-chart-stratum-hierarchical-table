@@ -19,6 +19,8 @@ import { useFlatTreeVirtualization } from './useFlatTreeVirtualization';
 import { useCrossFilterSelection } from './useCrossFilterSelection';
 import { useColumnLayout } from './useColumnLayout';
 import { useContainerWidth } from './hooks/useContainerWidth';
+import { useHostColors } from './hooks/useHostColors';
+import { useRowHeight } from './hooks/useRowHeight';
 import { useCsvExport } from './hooks/useCsvExport';
 import { useExpandedKeys } from './hooks/useExpandedKeys';
 import { useHeaderSort } from './hooks/useHeaderSort';
@@ -39,9 +41,11 @@ const NO_RULES: ConditionalFormattingRule[] = [];
 const DEFAULT_THEME = getTheme();
 
 /** Re-render the window only when the scroll crosses a block of rows, not on every pixel. */
-const SCROLL_STEP_PX = 32 * 10;
-const quantizeScrollTop = (scrollTop: number): number =>
-  Math.floor(scrollTop / SCROLL_STEP_PX) * SCROLL_STEP_PX;
+const SCROLL_STEP_ROWS = 10;
+const quantizeScrollTop = (scrollTop: number, rowHeight: number): number => {
+  const step = rowHeight * SCROLL_STEP_ROWS;
+  return Math.floor(scrollTop / step) * step;
+};
 
 function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
   const {
@@ -173,6 +177,8 @@ function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
 
   const scrollWrapperRef = useRef<HTMLDivElement>(null);
   const containerWidth = useContainerWidth(scrollWrapperRef, width);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hostColors = useHostColors(containerRef);
 
   // Widths and order of the columns as the viewer set them (only with the layout flags on).
   const columnLayout = useColumnLayout({
@@ -292,10 +298,15 @@ function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
   }, [filteredData, expandedKeys, hasSearch]);
 
   const [scrollTop, setScrollTop] = useState(0);
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  const rowHeight = useRowHeight(tbodyRef, compactMode, visibleRows[0]?.key);
+  // Le righe nella finestra coprono l'altezza del grafico; il resto lo aggiunge il margine della finestra.
+  const windowRows = Math.max(30, Math.ceil((typeof height === 'number' && height > 0 ? height : 600) / rowHeight));
   const { renderWindow, rows } = useFlatTreeVirtualization(visibleRows, {
-    pageSize: props.formData?.pageSize,
+    pageSize: windowRows,
     threshold: props.formData?.virtualizationThreshold,
     scrollTop,
+    rowHeight,
   });
 
   const displayCols = useMemo(() => getDisplayColumns(columns), [columns]);
@@ -366,7 +377,11 @@ function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
         ? 'state.noDimensions'
         : 'state.noData';
     return (
-      <div className="superset-hierarchical-table-container" style={containerStyle}>
+      <div
+        ref={containerRef}
+        className={classNames('superset-hierarchical-table-container', hostColors.className)}
+        style={{ ...containerStyle, ...hostColors.style }}
+      >
         <div className="empty-state">{msg(emptyKey)}</div>
       </div>
     );
@@ -403,7 +418,11 @@ function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
   };
 
   return (
-    <div className="superset-hierarchical-table-container" style={containerStyle}>
+    <div
+      ref={containerRef}
+      className={classNames('superset-hierarchical-table-container', hostColors.className)}
+      style={{ ...containerStyle, ...hostColors.style }}
+    >
       {(enableWhatIf || Boolean(externalWhatIfBaseline)) && (
         <WhatIfToolbar
           metrics={metrics}
@@ -444,7 +463,7 @@ function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
       <div
         ref={scrollWrapperRef}
         className="table-scroll-wrapper"
-        onScroll={e => rows.length < visibleRows.length && setScrollTop(quantizeScrollTop(e.currentTarget.scrollTop))}
+        onScroll={e => rows.length < visibleRows.length && setScrollTop(quantizeScrollTop(e.currentTarget.scrollTop, rowHeight))}
       >
         <table
           className={classNames('hierarchical-table', {
@@ -474,7 +493,7 @@ function HierarchicalTableInner(props: HierarchicalTableTransformedProps) {
               <FlatHeader ctx={headerContext} />
             )}
           </thead>
-          <tbody>
+          <tbody ref={tbodyRef}>
             {grandTotalPosition === 'top' && grandTotalRow}
 
             {renderWindow.padTop > 0 && <tr style={{ height: renderWindow.padTop }} />}

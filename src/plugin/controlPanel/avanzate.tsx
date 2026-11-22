@@ -157,20 +157,6 @@ const avanzateSection: Section = {
     [subsectionHeader('Prestazioni, virtualizzazione e limiti Top N')],
     [
       {
-        name: 'pageSize',
-        config: {
-          type: 'SliderControl',
-          label: 'Dimensione finestra (righe visibili)',
-          default: 100,
-          min: 50,
-          max: 2000,
-          step: 50,
-          renderTrigger: true,
-          description:
-            'Numero massimo di righe rese contemporaneamente nel DOM quando la virtualizzazione è attiva. Esempio: 100.',
-        },
-      },
-      {
         name: 'virtualizationThreshold',
         config: {
           type: 'TextControl',
@@ -179,7 +165,7 @@ const avanzateSection: Section = {
           default: 500,
           renderTrigger: true,
           description:
-            'Soglia di righe visibili oltre cui la tabella usa lo scrolling virtuale per restare fluida. Esempio: 500.',
+            'Oltre questo numero di righe la tabella disegna solo quelle visibili mentre si scorre, per restare fluida; la finestra si adatta all\'altezza del grafico. Esempio: 500.',
         },
       },
     ],
