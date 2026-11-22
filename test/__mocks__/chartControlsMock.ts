@@ -16,3 +16,16 @@ export const D3_FORMAT_OPTIONS: [string, string][] = [
   ['SMART_NUMBER', 'Adaptive formatting'],
   [',d', ',d'],
 ];
+
+// Intestazione dei controlli: nell'host è il componente di Superset con il tooltip delle descrizioni.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const React = require('react');
+export const ControlHeader = ({ label, description, validationErrors }: any) =>
+  React.createElement(
+    'div',
+    { className: 'control-header', title: typeof description === 'string' ? description : undefined },
+    React.createElement('span', { className: 'control-label' }, label),
+    ...(Array.isArray(validationErrors) ? validationErrors : []).map((error: string, i: number) =>
+      React.createElement('span', { key: i, className: 'control-error' }, error),
+    ),
+  );

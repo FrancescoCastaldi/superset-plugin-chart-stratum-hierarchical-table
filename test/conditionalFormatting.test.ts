@@ -136,7 +136,7 @@ describe('conditionalFormatting regex fallback', () => {
 });
 
 describe('conditionalFormatting control and options', () => {
-  it('exposes the conditionalFormatting ArrayControl in Aspetto', () => {
+  it('exposes the conditionalFormatting row editor in Aspetto', () => {
     const customize = controlPanel.controlPanelSections.find(
       (s: { label: string }) => s.label === 'Aspetto',
     );
@@ -151,7 +151,8 @@ describe('conditionalFormatting control and options', () => {
 
     const { config } = items[index] as any;
     expect(typeof config.type).toBe('function');
-    expect(config.type.name).toBe('ArrayControl');
+    expect(config.type.name).toBe('RowListControl');
+    expect(config.storedAs).toBe('array');
     expect(config.default).toEqual([]);
   });
 
