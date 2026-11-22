@@ -110,8 +110,8 @@ describe('contrast ratio', () => {
     expect(contrastRatio('#a0a0a0')).toBeLessThan(3);
     expect(theme.positive).toBe('#a7f3d0');
     expect(theme.warnings).toHaveLength(2);
-    expect(theme.warnings[0]).toMatch(/customPositiveHex.*below 3:1/);
-    expect(theme.warnings[1]).toMatch(/customNeutralHex.*below 3:1/);
+    expect(theme.warnings[0]).toMatch(/customPositiveHex.*inferiore a 3:1/);
+    expect(theme.warnings[1]).toMatch(/customNeutralHex.*inferiore a 3:1/);
   });
 });
 

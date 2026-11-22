@@ -43,6 +43,12 @@ export const SaveIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const WarningIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M8 2 14 13H2zM8 6v3.5M8 11.2v.1" />
+  </Icon>
+);
+
 export const BoltIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M9 2 4 9h4l-1 5 5-7H8z" />

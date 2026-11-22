@@ -73,13 +73,13 @@ export function getTheme(name?: string, custom: CustomThemeColors = {}): Resolve
     const value = String(custom[field] ?? '').trim();
     if (!value) return;
     if (!isValidHex(value)) {
-      theme.warnings.push(`${field}: invalid hex ${value}`);
+      theme.warnings.push(`${field}: colore non valido (${value})`);
       return;
     }
     theme[key] = value;
     const ratio = contrastRatio(value);
     if (ratio < 3) {
-      theme.warnings.push(`${field}: contrast ${ratio.toFixed(2)}:1 below 3:1`);
+      theme.warnings.push(`${field}: contrasto ${ratio.toFixed(2)}:1, inferiore a 3:1`);
     }
   });
   return theme;

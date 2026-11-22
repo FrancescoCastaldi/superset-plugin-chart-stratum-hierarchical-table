@@ -1040,3 +1040,16 @@ th.sortable-header:hover .sort-indicator-inactive::after {
 .hierarchical-table th .col-resize-handle:hover::after {
   background: #2563eb;
 }
+
+/* Avviso di impostazioni ignorate e riga "nessun risultato" della ricerca */
+.superset-hierarchical-table-container .config-warning {
+  display: inline-flex;
+  align-items: center;
+  color: #b45309;
+  cursor: help;
+}
+
+.superset-hierarchical-table-container .no-results-row td {
+  text-align: center;
+  padding: 16px;
+}
