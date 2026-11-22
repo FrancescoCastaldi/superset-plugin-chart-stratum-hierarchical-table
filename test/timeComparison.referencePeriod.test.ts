@@ -171,7 +171,8 @@ describe('time comparison control aliases', () => {
       resolveTransformOptions({ timeGrain: 'month', referencePeriod: 'ytd', comparisonType: 'budget_target' }),
     ).toMatchObject({
       comparisonTimeGrain: 'month',
-      comparisonReferencePeriod: 'ytd',
+      // Con l'obiettivo come base il periodo di riferimento non conta più.
+      comparisonReferencePeriod: 'current',
       comparisonStrategy: 'budget_target',
     });
 
@@ -185,7 +186,7 @@ describe('time comparison control aliases', () => {
     });
     expect(canonicalFirst).toMatchObject({
       comparisonTimeGrain: 'week',
-      comparisonReferencePeriod: 'previous',
+      comparisonReferencePeriod: 'current',
       comparisonStrategy: 'prev_year_same_period',
     });
 
@@ -205,23 +206,34 @@ describe('time comparison control visibility', () => {
       .flatMap(section => section.controlSetRows.flat())
       .find((item: any) => item && typeof item === 'object' && item.name === name);
 
-  const state = (columns: string[], comparisonType = 'prev_period') => ({
+  const state = (columns: string[], endOfSeriesBaseline = 'none') => ({
     controls: {
       hierarchyType: { value: 'multi_dimension' },
       columns: { value: columns },
-      comparisonType: { value: comparisonType },
+      endOfSeriesBaseline: { value: endOfSeriesBaseline },
     },
   });
 
-  it('shows the controls only for a single pivot column, keeping their saved names', () => {
-    for (const name of ['timeGrain', 'referencePeriod', 'comparisonType']) {
-      const { visibility } = findControl(name).config;
-      expect(visibility(state(['mese']))).toBe(true);
-      expect(visibility(state([]))).toBe(false);
-      expect(visibility(state(['anno', 'mese']))).toBe(false);
+  it('shows the baseline only for a single pivot column', () => {
+    const { visibility } = findControl('endOfSeriesBaseline').config;
+    expect(visibility(state(['mese']))).toBe(true);
+    expect(visibility(state([]))).toBe(false);
+    expect(visibility(state(['anno', 'mese']))).toBe(false);
+  });
+
+  it('shows the grain only once a baseline is chosen', () => {
+    const { visibility } = findControl('timeGrain').config;
+    expect(visibility(state(['mese'], 'none'))).toBe(false);
+    for (const baseline of ['previous_period', 'ytd_average', 'same_period_last_year', 'budget_target']) {
+      expect(visibility(state(['mese'], baseline))).toBe(true);
     }
-    expect(findControl('referencePeriod').config.visibility(state(['mese'], 'budget_target'))).toBe(false);
-    expect(findControl('timeGrain').config.visibility(state(['mese'], 'budget_target'))).toBe(true);
+    expect(visibility(state([], 'previous_period'))).toBe(false);
+    expect(visibility(state(['anno', 'mese'], 'previous_period'))).toBe(false);
+  });
+
+  it('no longer exposes the controls replaced by the baseline', () => {
+    expect(findControl('comparisonType')).toBeUndefined();
+    expect(findControl('referencePeriod')).toBeUndefined();
   });
 });
 

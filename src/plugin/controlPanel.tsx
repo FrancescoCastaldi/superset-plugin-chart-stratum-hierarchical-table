@@ -4,7 +4,7 @@ import {
   D3_FORMAT_OPTIONS,
 } from '@superset-ui/chart-controls';
 import { showDurationControl } from './timeMetricHints';
-import { isValidHex } from '../utils/themes';
+import { colorSeed, endOfSeriesBaselineSeed } from './legacyMigration';
 
 const subsectionHeader = (label: string) => <h4 className="section-header">{label}</h4>;
 const subsectionDivider = () => <hr />;
@@ -42,15 +42,17 @@ function ArrayControl({
   );
 }
 
-const customHexControl = (name: string, label: string, exampleHex: string) => ({
+// Selettore colori nativo di Superset: salva {r,g,b,a}; i grafici già salvati con #RRGGBB
+// vengono convertiti all'apertura (initialValue) e letti in entrambi i formati dal tema.
+const customColorControl = (name: string, label: string, exampleHex: string) => ({
   name,
   config: {
-    type: 'TextControl',
+    type: 'ColorPickerControl',
     label,
     renderTrigger: true,
-    default: '',
-    description: `Codice esadecimale #RRGGBB o vuoto per usare il colore standard; mantenere contrasto almeno 3:1 su bianco. Esempio: ${exampleHex}.`,
-    validators: [(v: string) => (!v || isValidHex(v) ? false : 'Usa il formato #RRGGBB')],
+    default: undefined,
+    initialValue: colorSeed,
+    description: `Colore personalizzato; se non lo imposti vale quello standard. Mantieni un contrasto di almeno 3:1 su sfondo bianco. Esempio: ${exampleHex}.`,
     visibility: ({ controls }: { controls: any }) => controls?.themeProfile?.value === 'custom',
   },
 });
@@ -91,6 +93,10 @@ const isTwoWayPivot = ({ controls }: { controls: any }) =>
 
 const isFlatLayout = ({ controls }: { controls: any }) =>
   !hasPivot({ controls });
+
+// Con l'ordinamento disattivato (Interazione) nessun ordinamento viene applicato, nemmeno quello iniziale.
+const sortingEnabled = ({ controls }: { controls: any }) =>
+  controls?.enableHierarchicalSort?.value !== false;
 
 export const CUSTOM_D3_FORMAT_OPTIONS: [string, string][] = [
   ['SMART_NUMBER', 'Formattazione adattiva (Smart Number)'],
@@ -216,8 +222,8 @@ const config: ControlPanelConfig = {
               renderTrigger: true,
               default: true,
               description:
-                'Se attivo mostra tutte le metriche affiancate sotto ogni periodo pivot (es. Gen [A, B], Feb [A, B]); altrimenti raggruppa per metrica.',
-              visibility: hasPivot,
+                'Se attivo mostra tutte le metriche affiancate sotto ogni periodo pivot (es. Gen [A, B], Feb [A, B]); altrimenti raggruppa per metrica. Vale per il pivot a una colonna.',
+              visibility: isSinglePivot,
             },
           },
           {
@@ -370,6 +376,28 @@ const config: ControlPanelConfig = {
         ],
         [
           {
+            name: 'endOfSeriesBaseline',
+            config: {
+              type: 'SelectControl',
+              label: 'Confronto di fine serie (ultimo periodo)',
+              default: 'none',
+              clearable: false,
+              renderTrigger: true,
+              choices: [
+                ['none', 'Nessuno (nessuna colonna di confronto)'],
+                ['previous_period', 'Periodo completo precedente'],
+                ['ytd_average', 'Media progressiva dell\'anno (YTD)'],
+                ['same_period_last_year', 'Stesso periodo dell\'anno precedente'],
+                ['budget_target', 'Obiettivo (usa il campo Obiettivi, in Avanzate)'],
+              ],
+              // Parte dai controlli delle versioni precedenti (comparisonType e referencePeriod).
+              initialValue: endOfSeriesBaselineSeed,
+              description:
+                'Aggiunge, dopo le colonne pivot, la variazione dell\'ultimo periodo rispetto alla base scelta. Esempio: Stesso periodo dell\'anno precedente per un confronto annuale su serie mensili.',
+              visibility: isSinglePivot,
+            },
+          },
+          {
             name: 'timeGrain',
             config: {
               type: 'SelectControl',
@@ -386,48 +414,10 @@ const config: ControlPanelConfig = {
                 ['year', 'Anno (YoY)'],
               ],
               description:
-                'Durata dei periodi sulle colonne pivot (YYYY, YYYY-MM, YYYY-Qn). Esempio: Mese su colonne 2026-01, 2026-02.',
-              visibility: isSinglePivot,
-            },
-          },
-          {
-            name: 'comparisonType',
-            config: {
-              type: 'SelectControl',
-              label: 'Strategia base di confronto',
-              default: 'prev_period',
-              clearable: false,
-              renderTrigger: true,
-              choices: [
-                ['prev_period', 'Periodo immediatamente precedente'],
-                ['prev_year_same_period', 'Stesso periodo dell\'anno precedente'],
-                ['budget_target', 'Budget / obiettivo pianificato'],
-              ],
-              description:
-                'Base usata per calcolare la variazione di fine serie nel pivot singolo. Esempio: Stesso periodo anno precedente per YoY.',
-              visibility: isSinglePivot,
-            },
-          },
-        ],
-        [
-          {
-            name: 'referencePeriod',
-            config: {
-              type: 'SelectControl',
-              label: 'Periodo di riferimento della strategia',
-              default: 'current',
-              clearable: false,
-              renderTrigger: true,
-              choices: [
-                ['current', 'Periodo attivo corrente'],
-                ['previous', 'Periodo completo precedente'],
-                ['ytd', 'Media progressiva anno (YTD)'],
-              ],
-              description:
-                'Baseline dell\'ultimo periodo rispetto a se stesso, al periodo chiuso precedente o alla media YTD. Esempio: Periodo completo precedente.',
-              visibility: (state: { controls: any }) =>
-                isSinglePivot(state) &&
-                (state.controls?.comparisonType?.value ?? 'prev_period') === 'prev_period',
+                'Durata dei periodi sulle colonne pivot (YYYY, YYYY-MM, YYYY-Qn), necessaria per trovare il periodo precedente. Esempio: Mese su colonne 2026-01, 2026-02.',
+              visibility: ({ controls }: { controls: any }) =>
+                isSinglePivot({ controls }) &&
+                (controls?.endOfSeriesBaseline?.value ?? 'none') !== 'none',
             },
           },
         ],
@@ -438,11 +428,11 @@ const config: ControlPanelConfig = {
             name: 'showVarianceDelta',
             config: {
               type: 'CheckboxControl',
-              label: 'Abilita badge / delta di varianza',
+              label: 'Variazione % tra periodi consecutivi',
               renderTrigger: true,
               default: false,
               description:
-                'Calcola delta percentuale cronologico su tabella piatta o tra periodi pivot (salvo precedenza del filtro Calendar). Esempio: +14,2% accanto al valore.',
+                'Calcola la variazione percentuale tra periodi consecutivi: tra righe cronologiche nella tabella piatta, tra colonne pivot nel pivot singolo (salvo precedenza del confronto del filtro Calendar). Esempio: +14,2% accanto al valore.',
               visibility: ({ controls }: { controls: any }) =>
                 isMultiDim({ controls }) && !isTwoWayPivot({ controls }),
             },
@@ -451,7 +441,7 @@ const config: ControlPanelConfig = {
             name: 'showVarianceBadges',
             config: {
               type: 'CheckboxControl',
-              label: 'Mostra badge delta % nei valori',
+              label: 'Mostra la variazione come badge nelle celle',
               renderTrigger: true,
               default: true,
               description:
@@ -962,6 +952,7 @@ const config: ControlPanelConfig = {
               },
               description:
                 'Colonna strutturale o metrica usata per ordinare l\'albero al caricamento. Esempio: Richieste o Categoria gerarchia.',
+              visibility: sortingEnabled,
             },
           },
           {
@@ -978,7 +969,8 @@ const config: ControlPanelConfig = {
                 ['desc', 'Decrescente / Z-A'],
               ],
               description:
-                'Direzione dell\'ordinamento applicato all\'apertura del grafico.',
+                'Direzione dell\'ordinamento applicato all\'apertura del grafico. Esempio: Decrescente con la colonna Richieste per vedere prima i reparti più carichi.',
+              visibility: sortingEnabled,
             },
           },
         ],
@@ -998,9 +990,7 @@ const config: ControlPanelConfig = {
               ],
               description:
                 'Dove collocare i nodi senza valore quando si ordina una metrica. Esempio: Sempre in fondo.',
-              visibility: ({ controls }: { controls: any }) =>
-                controls?.enableHierarchicalSort?.value !== false ||
-                (controls?.defaultSortOrder?.value && controls.defaultSortOrder.value !== 'none'),
+              visibility: sortingEnabled,
             },
           },
         ],
@@ -1109,7 +1099,7 @@ const config: ControlPanelConfig = {
                 ['colorblind', 'Adatto ai daltonici (blu)'],
                 ['stratum-warm', 'Stratum caldo (tramonto)'],
                 ['stratum-cool', 'Stratum freddo (smeraldo)'],
-                ['custom', 'Colori personalizzati (#RRGGBB)'],
+                ['custom', 'Colori personalizzati (selettore colori)'],
               ],
               description:
                 'Palette cromatica usata per badge min/max, heatmap e data bar. Esempio: Adatto ai daltonici.',
@@ -1117,10 +1107,10 @@ const config: ControlPanelConfig = {
           },
         ],
         [
-          customHexControl('customPositiveHex', 'Colore positivo / MAX', '#059669'),
-          customHexControl('customNegativeHex', 'Colore negativo / MIN', '#dc2626'),
+          customColorControl('customPositiveHex', 'Colore positivo / MAX', '#059669'),
+          customColorControl('customNegativeHex', 'Colore negativo / MIN', '#dc2626'),
         ],
-        [customHexControl('customNeutralHex', 'Colore neutro / data bar', '#0284c7')],
+        [customColorControl('customNeutralHex', 'Colore neutro / data bar', '#0284c7')],
         [
           {
             name: 'showSparklines',

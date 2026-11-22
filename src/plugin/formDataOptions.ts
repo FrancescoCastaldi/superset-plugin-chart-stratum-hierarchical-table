@@ -23,6 +23,7 @@ import {
   PivotTimeDeltaMode,
   SortOrder,
 } from '../types';
+import { baselineToStrategy, colorToHex, resolveEndOfSeriesBaseline } from './legacyMigration';
 import { normalizeConditionalFormatting } from '../utils/conditionalFormatting';
 import { normalizeDimensionLimits, DimensionLimitRule } from '../utils/dimensionLimits';
 import { normalizeGoals } from '../utils/goalBenchmark';
@@ -119,14 +120,7 @@ export interface TransformOptions {
 }
 
 const TIME_GRAINS: readonly ComparisonTimeGrain[] = ['auto', 'day', 'week', 'month', 'quarter', 'year'];
-const REFERENCE_PERIODS: readonly ComparisonReferencePeriod[] = ['current', 'previous', 'ytd'];
 const AGGREGATION_MODES: readonly AggregationFunction[] = ['sum', 'avg', 'min', 'max', 'count', 'weighted_avg'];
-const COMPARISON_STRATEGIES: readonly ComparisonStrategy[] = [
-  'prev_period',
-  'prev_year_same_period',
-  'budget_target',
-];
-
 function mapSupersetTimeGrain(sqlaGrain: unknown): ComparisonTimeGrain | undefined {
   if (typeof sqlaGrain !== 'string') return undefined;
   const upper = sqlaGrain.toUpperCase().trim();
@@ -210,13 +204,12 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     labelColumn = '',
     metrics: rawMetrics = [],
     initialExpandDepth = 1,
-    valueDisplayMode = 'all',
-    value_display_mode,
+    // Alias ancora attivo: i grafici creati via API possono averlo (equivale a initialExpandDepth -1).
     expand_all_by_default,
     expandAllByDefault,
+    valueDisplayMode = 'all',
+    value_display_mode,
     showSubtotals = true,
-    show_rollup_totals,
-    showRollupTotals,
     showGrandTotal = true,
     grandTotalPosition = 'top',
     grand_total_position,
@@ -251,7 +244,6 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     minMaxScope = 'leaves_only',
     min_max_scope,
     enableExport = true,
-    enable_export,
     showVarianceDelta,
     showVarianceBadges = true,
     resizableColumns = false,
@@ -261,7 +253,6 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     periodLabelsFromFilters = false,
     crossFilterAppliesToSelf = false,
     combineMetric = true,
-    combine_metric,
     pivotSortOrder = 'desc',
     pivot_sort_order,
     pivotRowTotalsPosition = 'none',
@@ -269,7 +260,6 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     pivotRowTotalsLabel = 'Totals',
     pivot_row_totals_label,
     showPivotColumnSubtotals = true,
-    show_pivot_column_subtotals,
     pivotColumnSubtotalLabel = 'Total',
     pivot_column_subtotal_label,
     pivotTimeDeltaMode = 'none',
@@ -292,6 +282,8 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     mergedFormData.pivotColumns,
   );
 
+  const baseline = baselineToStrategy(resolveEndOfSeriesBaseline(mergedFormData));
+
   return {
     hierarchyType,
     dimensions,
@@ -303,21 +295,10 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     labelColumn: getColumnName(labelColumn),
     isPivotMode: hierarchyType === 'multi_dimension' && pivotDimensions.length > 0,
     initialExpandDepth:
-      expandAllByDefault || expand_all_by_default
-        ? -1
-        : Number(initialExpandDepth ?? mergedFormData.initial_expand_depth ?? mergedFormData.expand_level ?? 1),
+      expandAllByDefault || expand_all_by_default ? -1 : Number(initialExpandDepth ?? 1),
     valueDisplayMode: valueDisplayMode || value_display_mode || 'all',
-    showSubtotals:
-      showSubtotals ??
-      showRollupTotals ??
-      show_rollup_totals ??
-      mergedFormData.subtotals_enabled ??
-      true,
-    showGrandTotal:
-      showGrandTotal ??
-      mergedFormData.show_grand_total ??
-      mergedFormData.grand_total_enabled ??
-      true,
+    showSubtotals: showSubtotals ?? true,
+    showGrandTotal: showGrandTotal ?? true,
     grandTotalPosition: grandTotalPosition || grand_total_position || 'top',
     stickyHeader: Boolean(stickyHeader ?? sticky_header ?? true),
     enableSearch: Boolean(enableSearch ?? enable_search ?? true),
@@ -349,7 +330,7 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
         ? Number(mergedFormData.diverging_midpoint)
         : undefined,
     dataBarZeroAxis: Boolean(mergedFormData.dataBarZeroAxis ?? mergedFormData.data_bar_zero_axis),
-    enableExport: enableExport ?? enable_export ?? true,
+    enableExport: enableExport ?? true,
     showVarianceDelta: Boolean(showVarianceDelta),
     showCalendarComparison:
       mergedFormData.show_calendar_comparison !== false && mergedFormData.showCalendarComparison !== false,
@@ -370,15 +351,16 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     showPeriodInMetricLabel: Boolean(showPeriodInMetricLabel),
     periodLabelsFromFilters: Boolean(periodLabelsFromFilters),
     crossFilterAppliesToSelf: Boolean(crossFilterAppliesToSelf),
-    combineMetric: combineMetric ?? combine_metric ?? true,
+    combineMetric: combineMetric ?? true,
     pivotSortOrder: pivotSortOrder || pivot_sort_order || 'desc',
     pivotRowTotalsPosition: pivotRowTotalsPosition || pivot_row_totals_position || 'none',
     pivotRowTotalsLabel: pivotRowTotalsLabel || pivot_row_totals_label || 'Totals',
-    showPivotColumnSubtotals: showPivotColumnSubtotals ?? show_pivot_column_subtotals ?? true,
+    showPivotColumnSubtotals: showPivotColumnSubtotals ?? true,
     pivotColumnSubtotalLabel: pivotColumnSubtotalLabel || pivot_column_subtotal_label || 'Total',
     pivotTimeDeltaMode: pivotTimeDeltaMode || pivot_time_delta_mode || 'none',
     pivotTimeDeltaLag: Number(pivotTimeDeltaLag || pivot_time_delta_lag || 1),
-    // Saved charts keep the control names timeGrain / referencePeriod / comparisonType.
+    // La base del confronto di fine serie sostituisce comparisonType e referencePeriod; i grafici
+    // salvati con le chiavi vecchie continuano a funzionare (vedi legacyMigration).
     comparisonTimeGrain: pickChoice(
       TIME_GRAINS,
       'year',
@@ -387,18 +369,8 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
       mergedFormData.time_grain,
       mapSupersetTimeGrain(mergedFormData.time_grain_sqla),
     ),
-    comparisonReferencePeriod: pickChoice(
-      REFERENCE_PERIODS,
-      'current',
-      mergedFormData.comparisonReferencePeriod,
-      mergedFormData.referencePeriod,
-    ),
-    comparisonStrategy: pickChoice(
-      COMPARISON_STRATEGIES,
-      'prev_period',
-      mergedFormData.comparisonStrategy,
-      mergedFormData.comparisonType,
-    ),
+    comparisonReferencePeriod: baseline.referencePeriod,
+    comparisonStrategy: baseline.strategy,
     goals: normalizeGoals(mergedFormData.goals),
     metricDefinitions: normalizeMetricDefinitions(
       mergedFormData.metricDefinitions ??
@@ -462,7 +434,11 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
         mergedFormData.theme_palette ??
         mergedFormData.themePalette ??
         mergedFormData.theme,
-      mergedFormData,
+      {
+        customPositiveHex: colorToHex(mergedFormData.customPositiveHex),
+        customNegativeHex: colorToHex(mergedFormData.customNegativeHex),
+        customNeutralHex: colorToHex(mergedFormData.customNeutralHex),
+      },
     ),
     enableWhatIf: Boolean(mergedFormData.enableWhatIf ?? mergedFormData.enable_what_if),
   };

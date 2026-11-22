@@ -80,8 +80,7 @@ const EXPECTED_CONTROL_NAMES = [
   'periodComparisonYearColumn',
   'periodComparisonMonthColumn',
   'timeGrain',
-  'referencePeriod',
-  'comparisonType',
+  'endOfSeriesBaseline',
   'goals',
   'metricDefinitions',
   'tableCalculations',
@@ -244,6 +243,7 @@ describe('controlPanel layout', () => {
 
     const sourceFiles = [
       '../src/plugin/formDataOptions.ts',
+      '../src/plugin/legacyMigration.ts',
       '../src/plugin/buildQuery.ts',
       '../src/plugin/transformProps.ts',
       '../src/components/HierarchicalTable.tsx',
@@ -301,8 +301,10 @@ describe('controlPanel layout', () => {
     expect(opts.showPeriodInMetricLabel).toBe(controlByName('showPeriodInMetricLabel').config.default);
     expect(opts.periodLabelsFromFilters).toBe(controlByName('periodLabelsFromFilters').config.default);
     expect(opts.comparisonTimeGrain).toBe(controlByName('timeGrain').config.default);
-    expect(opts.comparisonReferencePeriod).toBe(controlByName('referencePeriod').config.default);
-    expect(opts.comparisonStrategy).toBe(controlByName('comparisonType').config.default);
+    // "Nessuno" equivale alla vecchia coppia predefinita: periodo precedente, periodo attivo.
+    expect(controlByName('endOfSeriesBaseline').config.default).toBe('none');
+    expect(opts.comparisonReferencePeriod).toBe('current');
+    expect(opts.comparisonStrategy).toBe('prev_period');
     expect(opts.showSparklines).toBe(controlByName('showSparklines').config.default);
     expect(opts.sparklineMetrics).toEqual(controlByName('sparklineMetrics').config.default);
     expect(opts.aggregationMode).toBe(controlByName('aggregationMode').config.default);

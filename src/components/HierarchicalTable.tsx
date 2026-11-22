@@ -602,11 +602,7 @@ export default function HierarchicalTable(props: HierarchicalTableTransformedPro
   const resolvedMetricDefinitions = useMemo(
     () =>
       normalizeMetricDefinitions(
-        propMetricDefinitions ??
-          props.formData?.metricDefinitions ??
-          (props.formData as any)?.metric_definitions ??
-          (props.formData as any)?.metricDefinitionsJson ??
-          (props.formData as any)?.metric_definitions_json,
+        propMetricDefinitions ?? props.formData?.metricDefinitions,
       ),
     [propMetricDefinitions, props.formData],
   );
