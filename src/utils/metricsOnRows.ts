@@ -1,17 +1,19 @@
 import { MetricRowFormat, TableColumn, TreeNode } from '../types';
 
 /**
- * Metriche sulle righe: le metriche diventano un livello dell'albero, e le colonne diventano i
- * periodi del pivot (o una sola colonna "Valore" senza pivot). Esempio con la metrica dopo l'ultimo
- * livello: Sede > Ambulatorio > [Ricavi, Costi, Margine %], dove ogni riga metrica ha i valori della
- * propria foglia, mentre sui livelli superiori (con subtotali attivi) ha il valore del nodo.
+ * Metriche sulle righe: alcune metriche diventano un livello dell'albero, le altre restano colonne.
+ * Esempio con la metrica dopo l'ultimo livello: Sede > Mese > [Importo Totem ZC, Importo Portale ZC],
+ * dove ogni riga metrica ha il suo valore nella colonna "Valore" (o nei periodi del pivot), mentre le
+ * righe di Sede e Mese mostrano le metriche che sono rimaste colonne.
  *
  * Il livello si può mettere anche più in alto: sotto ogni riga metrica compare il sottoalbero delle
  * dimensioni più in basso, ripetuto per ciascuna metrica, con i valori di quella metrica.
  */
 
 export interface MetricsOnRowsOptions {
-  /** Metriche (nome base) nell'ordine di visualizzazione. */
+  /** Tutte le metriche del grafico (nome base): servono a riconoscere le colonne. */
+  allMetrics: string[];
+  /** Le metriche che diventano righe, nell'ordine di visualizzazione. */
   metrics: string[];
   /** Quante dimensioni stanno sopra il livello metrica: 0 in cima, dimensions.length dopo l'ultima. */
   position: number;
@@ -57,8 +59,9 @@ function sumOfRoots(roots: TreeNode[]): TreeNode {
   const metrics: Record<string, number | string | null> = {};
   for (const root of roots) {
     for (const [key, value] of Object.entries(root.metrics)) {
-      if (typeof value === 'number')
+      if (typeof value === 'number') {
         metrics[key] = (typeof metrics[key] === 'number' ? (metrics[key] as number) : 0) + value;
+      }
     }
   }
   return { key: 'root', id: 'root', name: '', depth: 0, path: [], isLeaf: false, metrics };
@@ -78,25 +81,27 @@ function projectMetric(
   return out;
 }
 
-/** Copia del sottoalbero per una riga metrica: chiavi univoche per riga, valori della sola metrica. */
+/**
+ * Copia del sottoalbero per una riga metrica: chiavi univoche per riga. Le righe di dimensione
+ * tengono le metriche-colonna e aggiungono il valore della metrica della riga sopra.
+ */
 function cloneForMetric(
   nodes: TreeNode[],
   prefix: string,
   depthShift: number,
   metric: string,
   slots: string[],
-  labelFor: (metric: string) => string,
 ): TreeNode[] {
   return nodes.map(node => ({
     ...node,
     key: `${prefix}/${node.key}`,
     id: `${prefix}/${node.id}`,
     depth: node.depth + depthShift,
-    valueless: false,
-    metrics: projectMetric(node.metrics, metric, slots),
+    metricScope: metric,
+    metrics: { ...node.metrics, ...projectMetric(node.metrics, metric, slots) },
     subtotals: undefined,
     children: node.children
-      ? cloneForMetric(node.children, prefix, depthShift, metric, slots, labelFor)
+      ? cloneForMetric(node.children, prefix, depthShift, metric, slots)
       : undefined,
   }));
 }
@@ -104,7 +109,6 @@ function cloneForMetric(
 interface RowContext {
   metrics: string[];
   slots: string[];
-  dimensionCount: number;
   subtotals: boolean;
   position: number;
   labelFor: (metric: string) => string;
@@ -123,9 +127,7 @@ function metricRowsFor(
     const values = parent ? projectMetric(parent.metrics, metric, ctx.slots) : {};
     // Sotto la riga restano le dimensioni più in basso, se ci sono (le foglie non ne hanno).
     const children =
-      originals.length > 0
-        ? cloneForMetric(originals, key, 1, metric, ctx.slots, ctx.labelFor)
-        : [];
+      originals.length > 0 ? cloneForMetric(originals, key, 1, metric, ctx.slots) : [];
     return {
       key,
       id: key,
@@ -142,11 +144,10 @@ function metricRowsFor(
   });
 }
 
-/** Nodo sopra il livello metrica: i valori non si mostrano, si mostrano le sue righe metrica. */
+/** Nodo sopra il livello metrica: ha le sue righe metrica, e le metriche-colonna restano sue. */
 function rewriteAbove(node: TreeNode, dimensionDepth: number, ctx: RowContext): TreeNode {
   const originals = node.children ?? [];
   const rowDepth = dimensionDepth + 1;
-  node.valueless = true;
   if (dimensionDepth === ctx.position - 1 || originals.length === 0) {
     node.children = metricRowsFor(node, node.key, rowDepth, originals, ctx);
     return node;
@@ -159,29 +160,30 @@ function rewriteAbove(node: TreeNode, dimensionDepth: number, ctx: RowContext): 
 }
 
 /**
- * Riorganizza l'albero e le colonne. Le colonne metriche diventano una per periodo (chiave uguale
- * allo slot); quelle non riconosciute, e le sparkline, si tolgono. Le colonne non metriche restano.
+ * Riorganizza l'albero e le colonne. Le colonne delle metriche che diventano righe si fondono in
+ * una per periodo (chiave uguale allo slot, `valueColumn`); le altre colonne metriche restano come
+ * sono. Le sparkline delle metriche-riga si tolgono.
  */
 export function pivotMetricsToRows(
   tree: TreeNode[],
   columns: TableColumn[],
   options: MetricsOnRowsOptions,
 ): MetricsOnRowsResult {
-  const metricColumns: { column: TableColumn; metric: string; slot: string }[] = [];
-  const otherColumns: TableColumn[] = [];
-  for (const column of columns) {
-    const split =
-      column.isMetric && !column.sparkline ? splitColumnKey(column.key, options.metrics) : null;
-    if (split) metricColumns.push({ column, ...split });
-    else if (!column.isMetric) otherColumns.push(column);
-  }
-
+  const rowMetrics = options.metrics;
+  const keptColumns: TableColumn[] = [];
+  const slotColumns = new Map<string, TableColumn>();
   const slotOrder: string[] = [];
-  const slotColumns = new Map<
-    string,
-    TableColumn & { perMetric: Record<string, MetricRowFormat> }
-  >();
-  for (const { column, metric, slot } of metricColumns) {
+  const usedMetrics = new Set<string>();
+
+  for (const column of columns) {
+    const split = column.isMetric ? splitColumnKey(column.key, options.allMetrics) : null;
+    if (!split || !rowMetrics.includes(split.metric)) {
+      keptColumns.push(column);
+      continue;
+    }
+    if (column.sparkline) continue;
+    const { metric, slot } = split;
+    usedMetrics.add(metric);
     let target = slotColumns.get(slot);
     if (!target) {
       slotOrder.push(slot);
@@ -192,23 +194,25 @@ export function pivotMetricsToRows(
         title: slot === '' ? options.valueLabel : column.title,
         baseMetric: undefined,
         sparkline: undefined,
+        valueColumn: true,
         perMetric: {},
       };
       slotColumns.set(slot, target);
     }
-    target.perMetric[metric] = {
+    (target.perMetric as Record<string, MetricRowFormat>)[metric] = {
       formatter: column.formatter,
       polarity: column.polarity,
       deltaBaseline: column.deltaBaseline,
       exportFormatted: column.exportFormatted,
     };
   }
-  const slots = slotOrder;
-  const usedMetrics = options.metrics.filter(m => metricColumns.some(c => c.metric === m));
+
+  const activeMetrics = rowMetrics.filter(m => usedMetrics.has(m));
+  if (activeMetrics.length === 0) return { data: tree, columns };
+
   const ctx: RowContext = {
-    metrics: usedMetrics,
-    slots,
-    dimensionCount: options.dimensionCount,
+    metrics: activeMetrics,
+    slots: slotOrder,
     subtotals: options.subtotals,
     position: options.position,
     labelFor: options.labelFor,
@@ -216,17 +220,15 @@ export function pivotMetricsToRows(
 
   let data: TreeNode[];
   // In cima le righe metrica sono le radici: il loro valore è il totale, e il totale non si ripete.
-  const atTop = usedMetrics.length > 0 && options.position <= 0;
-  if (usedMetrics.length === 0) {
-    data = tree;
-  } else if (atTop) {
+  const atTop = options.position <= 0;
+  if (atTop) {
     const totals = options.grandTotal ?? sumOfRoots(tree);
     data = metricRowsFor(totals, 'root', 0, tree, ctx);
   } else {
     data = tree.map(root => rewriteAbove(root, 0, ctx));
   }
 
-  if (options.grandTotal && usedMetrics.length > 0 && !atTop) {
+  if (options.grandTotal && !atTop) {
     const totalNode: TreeNode = {
       key: 'grand-total',
       id: 'grand-total',
@@ -234,16 +236,14 @@ export function pivotMetricsToRows(
       depth: 0,
       path: [],
       isLeaf: false,
-      valueless: true,
-      metrics: {},
+      metrics: options.grandTotal.metrics,
       children: metricRowsFor(options.grandTotal, 'grand-total', 1, [], ctx),
     };
     data = options.grandTotalPosition === 'top' ? [totalNode, ...data] : [...data, totalNode];
   }
 
-  const valueColumns = slots.map(slot => slotColumns.get(slot)!);
   return {
     data,
-    columns: [...otherColumns, ...valueColumns],
+    columns: [...keptColumns, ...slotOrder.map(slot => slotColumns.get(slot)!)],
   };
 }

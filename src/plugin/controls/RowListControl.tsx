@@ -50,6 +50,8 @@ export interface FieldSpec {
   hint?: string;
   /** Campo mostrato solo per certe righe (es. il secondo valore di "tra"). */
   showWhen?: (row: ListRow) => boolean;
+  /** Campo secondario: sta in "Altre opzioni", chiuso finché non serve. */
+  advanced?: boolean;
   /** Dal testo digitato al valore salvato (default: il testo senza spazi ai lati). */
   parse?: (text: string, row: ListRow) => unknown;
 }
@@ -81,6 +83,8 @@ export interface RowListControlProps {
   dimensionChoices?: string[];
   /** Da mapStateToProps: tutte le metriche salvate del dataset. */
   datasetMetricChoices?: string[];
+  /** Un campo per riga invece della griglia: per i pannelli stretti con testi lunghi. */
+  stack?: boolean;
 }
 
 const box = {
@@ -95,6 +99,11 @@ const fieldGrid = {
   gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
   gap: 8,
 } as const;
+
+const stackGrid = { display: 'grid', gridTemplateColumns: '1fr', gap: 8 } as const;
+
+// Campi larghi quanto la colonna: senza, il campo esce dalla cella e copre il titolo accanto.
+const inputStyle = { width: '100%', boxSizing: 'border-box' } as const;
 
 const note = { fontSize: 12, opacity: 0.8, margin: '4px 0 0' } as const;
 const warningStyle = { fontSize: 12, margin: '4px 0 0', color: '#b45309' } as const;
@@ -120,6 +129,7 @@ export default function RowListControl(props: RowListControlProps) {
     metricChoices = [],
     dimensionChoices = [],
     datasetMetricChoices = [],
+    stack = false,
   } = props;
   const uid = useId();
   // Per le formule: le metriche scelte nel grafico e quelle salvate nel dataset, senza doppioni.
@@ -151,11 +161,23 @@ export default function RowListControl(props: RowListControlProps) {
     commit(rows.map((row, i) => (i === index ? withField(row, key, fieldValue) : row)));
 
   // Salva la formula e, accanto, le metriche del dataset che cita: la query le chiede anche se non sono scelte nel grafico.
-  const setFormula = (index: number, key: string, text: string, caret?: number, textareaId?: string) => {
+  const setFormula = (
+    index: number,
+    key: string,
+    text: string,
+    caret?: number,
+    textareaId?: string,
+  ) => {
     const operands = operandsOf(text, datasetMetricChoices);
     commit(
       rows.map((row, i) =>
-        i === index ? withField(withField(row, key, text.trim()), 'operands', operands.length > 0 ? operands : undefined) : row,
+        i === index
+          ? withField(
+              withField(row, key, text.trim()),
+              'operands',
+              operands.length > 0 ? operands : undefined,
+            )
+          : row,
       ),
     );
     if (caret !== undefined && textareaId) {
@@ -186,7 +208,12 @@ export default function RowListControl(props: RowListControlProps) {
     let input;
     if (spec.kind === 'select') {
       input = (
-        <select id={id} value={text} onChange={e => setField(index, spec.key, e.target.value)}>
+        <select
+          id={id}
+          style={inputStyle}
+          value={text}
+          onChange={e => setField(index, spec.key, e.target.value)}
+        >
           <option value="">(non impostato)</option>
           {(spec.options ?? []).map(([optionValue, optionLabel]) => (
             <option key={optionValue} value={optionValue}>
@@ -207,7 +234,11 @@ export default function RowListControl(props: RowListControlProps) {
       input = (
         <>
           {formulaChoices.length > 0 && (
-            <div role="group" aria-label="Metriche disponibili" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+            <div
+              role="group"
+              aria-label="Metriche disponibili"
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}
+            >
               {formulaChoices.map(name => (
                 <button
                   key={name}
@@ -232,7 +263,7 @@ export default function RowListControl(props: RowListControlProps) {
             defaultValue={text}
             key={`${id}-${text}`}
             placeholder={spec.placeholder}
-            style={{ width: '100%' }}
+            style={inputStyle}
             onDragOver={e => e.preventDefault()}
             onDrop={e => {
               e.preventDefault();
@@ -243,7 +274,8 @@ export default function RowListControl(props: RowListControlProps) {
               setFormula(index, spec.key, next.text, next.caret, id);
             }}
             onBlur={e => {
-              if (e.target.value.trim() !== text.trim()) setFormula(index, spec.key, e.target.value);
+              if (e.target.value.trim() !== text.trim())
+                setFormula(index, spec.key, e.target.value);
             }}
           />
         </>
@@ -253,6 +285,7 @@ export default function RowListControl(props: RowListControlProps) {
         <input
           id={id}
           type="text"
+          style={inputStyle}
           inputMode="decimal"
           defaultValue={text}
           key={`${id}-${text}`}
@@ -270,18 +303,26 @@ export default function RowListControl(props: RowListControlProps) {
         />
       );
     } else {
-      const choices = spec.kind === 'metric' ? metricChoices : spec.kind === 'dimension' ? dimensionChoices : [];
+      const choices =
+        spec.kind === 'metric' ? metricChoices : spec.kind === 'dimension' ? dimensionChoices : [];
       const listId = choices.length > 0 ? `${id}-list` : undefined;
       input = (
         <>
           <input
             id={id}
             type="text"
+            style={inputStyle}
             list={listId}
             defaultValue={text}
             key={`${id}-${text}`}
             placeholder={spec.placeholder}
-            onBlur={e => setField(index, spec.key, spec.parse ? spec.parse(e.target.value.trim(), row) : e.target.value.trim())}
+            onBlur={e =>
+              setField(
+                index,
+                spec.key,
+                spec.parse ? spec.parse(e.target.value.trim(), row) : e.target.value.trim(),
+              )
+            }
           />
           {listId && (
             <datalist id={listId}>
@@ -304,6 +345,27 @@ export default function RowListControl(props: RowListControlProps) {
     );
   };
 
+  // Campi principali sempre visibili; quelli secondari in "Altre opzioni", chiuso finché non servono.
+  const renderRowFields = (row: ListRow, index: number) => {
+    const visible = fields.filter(spec => !spec.showWhen || spec.showWhen(row));
+    const main = visible.filter(spec => !spec.advanced);
+    const more = visible.filter(spec => spec.advanced);
+    const grid = stack ? stackGrid : fieldGrid;
+    return (
+      <>
+        <div style={grid}>{main.map(spec => renderField(row, index, spec))}</div>
+        {more.length > 0 && (
+          <details style={{ marginTop: 6 }}>
+            <summary>Altre opzioni</summary>
+            <div style={{ ...grid, marginTop: 6 }}>
+              {more.map(spec => renderField(row, index, spec))}
+            </div>
+          </details>
+        )}
+      </>
+    );
+  };
+
   const rowMessages = (row: ListRow, index: number): string[] => {
     const messages: string[] = [];
     const custom = rowWarning?.(row);
@@ -314,18 +376,30 @@ export default function RowListControl(props: RowListControlProps) {
     const metric = row.metric;
     const hasFormulaField = fields.some(spec => spec.kind === 'formula');
     // Le righe con formula nominano una metrica nuova: non deve essere tra quelle scelte.
-    if (!hasFormulaField && typeof metric === 'string' && metric && metricChoices.length > 0 && !metricChoices.includes(metric)) {
+    if (
+      !hasFormulaField &&
+      typeof metric === 'string' &&
+      metric &&
+      metricChoices.length > 0 &&
+      !metricChoices.includes(metric)
+    ) {
       messages.push('La metrica non è tra quelle scelte nella sezione Dati.');
     }
     const formula = row.formula;
     if (hasFormulaField && typeof formula === 'string' && formula.trim() !== '') {
       const parsedFormula = parseFormula(formula);
       if (!parsedFormula.ok) {
-        messages.push(`Formula non valida: ${parsedFormula.error} (posizione ${parsedFormula.position + 1}).`);
+        messages.push(
+          `Formula non valida: ${parsedFormula.error} (posizione ${parsedFormula.position + 1}).`,
+        );
       } else if (formulaChoices.length > 0) {
-        const missing = parsedFormula.refs.filter(ref => !formulaChoices.includes(ref) && !rows.some(r => r.metric === ref));
+        const missing = parsedFormula.refs.filter(
+          ref => !formulaChoices.includes(ref) && !rows.some(r => r.metric === ref),
+        );
         if (missing.length > 0) {
-          messages.push(`Metriche non trovate tra quelle del dataset o del grafico: ${missing.join(', ')}.`);
+          messages.push(
+            `Metriche non trovate tra quelle del dataset o del grafico: ${missing.join(', ')}.`,
+          );
         }
       }
     }
@@ -337,7 +411,8 @@ export default function RowListControl(props: RowListControlProps) {
       <ControlHeader {...(props as object)} />
       {parsed.syntaxError && (
         <p role="alert" style={warningStyle}>
-          Il valore salvato non è un elenco valido ({parsed.syntaxError}). Aggiungendo una voce verrà sostituito.
+          Il valore salvato non è un elenco valido ({parsed.syntaxError}). Aggiungendo una voce
+          verrà sostituito.
         </p>
       )}
       {parsed.invalidCount > 0 && (
@@ -355,7 +430,12 @@ export default function RowListControl(props: RowListControlProps) {
                 {rowTitle} {index + 1}
               </strong>
               <span>
-                <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={`Sposta su ${rowTitle} ${index + 1}`}>
+                <button
+                  type="button"
+                  onClick={() => move(index, -1)}
+                  disabled={index === 0}
+                  aria-label={`Sposta su ${rowTitle} ${index + 1}`}
+                >
                   Su
                 </button>{' '}
                 <button
@@ -375,9 +455,7 @@ export default function RowListControl(props: RowListControlProps) {
                 </button>
               </span>
             </div>
-            <div style={fieldGrid}>
-              {fields.filter(spec => !spec.showWhen || spec.showWhen(row)).map(spec => renderField(row, index, spec))}
-            </div>
+            {renderRowFields(row, index)}
             {messages.map(message => (
               <p key={message} style={warningStyle}>
                 {message}
@@ -399,7 +477,9 @@ export default function RowListControl(props: RowListControlProps) {
       </div>
       <details style={{ marginTop: 6 }}>
         <summary>Esempio di configurazione</summary>
-        <pre style={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{JSON.stringify(exampleRows, null, 2)}</pre>
+        <pre style={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>
+          {JSON.stringify(exampleRows, null, 2)}
+        </pre>
       </details>
     </div>
   );

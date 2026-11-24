@@ -157,13 +157,14 @@ export const CALCULATED_METRICS_FIELDS: FieldSpec[] = [
     label: 'Formula',
     kind: 'formula',
     placeholder: 'es. ([ricavi] - [costi]) / [ricavi] * 100',
-    hint: 'Trascina una metrica nel riquadro o cliccala. Operatori: + - * /, parentesi, abs, min, max, round.',
+    hint: 'Trascina una metrica nel riquadro o cliccala. Operatori: + - * /, parentesi.',
   },
-  { key: 'label', label: 'Titolo della colonna', kind: 'text', placeholder: 'es. Margine %' },
+  { key: 'label', label: 'Titolo della colonna', kind: 'text', placeholder: 'es. Margine %', advanced: true },
   {
     key: 'format',
     label: 'Formato',
     kind: 'select',
+    advanced: true,
     options: [
       ['integer', 'numero intero'],
       ['decimal', 'numero con decimali'],
@@ -173,7 +174,7 @@ export const CALCULATED_METRICS_FIELDS: FieldSpec[] = [
       ['days', 'giorni'],
     ],
   },
-  { key: 'decimals', label: 'Decimali', kind: 'number', placeholder: 'es. 1' },
+  { key: 'decimals', label: 'Decimali', kind: 'number', placeholder: 'es. 1', advanced: true },
 ];
 
 export const CALCULATED_METRICS_EXAMPLE: ListRow[] = [

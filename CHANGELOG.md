@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-24
+
+### Added
+- **Choose which metrics go on rows**: with "Metriche sulle righe" on, the new "Quali metriche sulle righe" control picks the metrics that become rows of the hierarchy; the others stay columns. A row metric shows its value in a "Valore" column (or the pivot periods) and the dimension rows keep the column metrics. Empty means all metrics, as before.
+
+### Changed
+- The "Metriche calcolate" editor shows one field per line (name and formula), and keeps title, format and decimals under "Altre opzioni". Fields now fill the column width, so labels no longer overlap in the narrow panel.
+
+
 ## [1.1.0] - 2026-11-24
 
 ### Added
@@ -449,7 +458,8 @@ Production hardening: the chart is easier to set up, fully in Italian, safer to 
 ### Added
 - Initial release for the Hierarchical Table plugin.
 
-[Unreleased]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v1.0.0...v1.1.0
 [0.10.0]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v0.9.0...v0.10.0
 [0.4.1]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v0.4.0...v0.4.1

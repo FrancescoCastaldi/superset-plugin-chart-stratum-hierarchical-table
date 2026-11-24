@@ -50,6 +50,7 @@ function flatTree(): TreeNode[] {
 }
 
 const base = (extra: Partial<MetricsOnRowsOptions> = {}): MetricsOnRowsOptions => ({
+  allMetrics: ['ricavi', 'costi'],
   metrics: ['ricavi', 'costi'],
   position: 2,
   dimensionCount: 2,
@@ -70,7 +71,7 @@ describe('pivotMetricsToRows, flat, metric after the last level', () => {
     );
     const s1 = out.data.find(n => n.name === 'S1')!;
     const a = s1.children!.find(n => n.name === 'A')!;
-    expect(a.valueless).toBe(true);
+    expect(a.metricRow).toBeUndefined();
     const rows = a.children!;
     expect(rows.map(r => r.name)).toEqual(['Ricavi', 'Costi']);
     expect(rows[0].metrics[METRIC_VALUE_KEY]).toBe(100);
@@ -241,5 +242,61 @@ describe('pivotMetricsToRows, no metric columns', () => {
     const tree = flatTree();
     const out = pivotMetricsToRows(tree, [hierarchyColumn], base({ metrics: [] }));
     expect(out.data).toBe(tree);
+  });
+});
+
+describe('pivotMetricsToRows, only some metrics on rows', () => {
+  const columns = () => [
+    hierarchyColumn,
+    column('ricavi', 'ricavi', { formatter: (v: any) => `R${v}` }),
+    column('costi', 'costi', { formatter: (v: any) => `C${v}` }),
+  ];
+  const options = () => base({ allMetrics: ['ricavi', 'costi'], metrics: ['costi'] });
+
+  it('keeps the other metrics as columns and adds a value column for the row metrics', () => {
+    const out = pivotMetricsToRows(flatTree(), columns(), options());
+    expect(out.columns.filter(c => c.isMetric).map(c => c.key)).toEqual([
+      'ricavi',
+      METRIC_VALUE_KEY,
+    ]);
+    expect(out.columns.find(c => c.key === METRIC_VALUE_KEY)?.valueColumn).toBe(true);
+    expect(out.columns.find(c => c.key === 'ricavi')?.valueColumn).toBeUndefined();
+  });
+
+  it('makes rows only of the chosen metrics, and the dimension rows keep their column metrics', () => {
+    const out = pivotMetricsToRows(flatTree(), columns(), options());
+    const s1 = out.data.find(n => n.name === 'S1')!;
+    expect(s1.metrics.ricavi).toBe(400);
+    const a = s1.children!.find(n => n.name === 'A')!;
+    expect(a.metrics.ricavi).toBe(100);
+    expect(a.children!.map(r => r.name)).toEqual(['Costi']);
+    expect(a.children![0].metrics[METRIC_VALUE_KEY]).toBe(70);
+  });
+
+  it('keeps the column metrics on the Totale node', () => {
+    const out = pivotMetricsToRows(flatTree(), columns(), {
+      ...options(),
+      grandTotal: node('total', 'total', 0, { ricavi: 600, costi: 320 }),
+    });
+    const total = out.data[out.data.length - 1];
+    expect(total.metrics.ricavi).toBe(600);
+    expect(total.children!.map(r => r.metrics[METRIC_VALUE_KEY])).toEqual([320]);
+  });
+
+  it('keeps the column metrics on the dimension rows under a metric row', () => {
+    const out = pivotMetricsToRows(flatTree(), columns(), { ...options(), position: 1 });
+    const costiRow = out.data.find(n => n.name === 'S1')!.children!.find(n => n.metricRow)!;
+    const b = costiRow.children!.find(n => n.name === 'B')!;
+    expect(b.metricScope).toBe('costi');
+    expect(b.metrics.ricavi).toBe(300);
+    expect(b.metrics[METRIC_VALUE_KEY]).toBe(150);
+  });
+
+  it('leaves the table unchanged when no chosen metric has a column', () => {
+    const tree = flatTree();
+    const cols = columns();
+    const out = pivotMetricsToRows(tree, cols, { ...options(), metrics: ['altro'] });
+    expect(out.data).toBe(tree);
+    expect(out.columns).toBe(cols);
   });
 });

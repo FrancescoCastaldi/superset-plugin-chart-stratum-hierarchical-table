@@ -375,8 +375,8 @@ export interface TreeNode {
   othersCount?: number;
   /** Metriche sulle righe: la riga è una metrica (con i suoi valori) e non una dimensione. */
   metricRow?: { metric: string; label: string; subtotal: boolean };
-  /** Metriche sulle righe: riga di dimensione, senza valori nelle colonne dei periodi. */
-  valueless?: boolean;
+  /** Metriche sulle righe: riga di dimensione sotto una riga metrica, con il valore di quella metrica. */
+  metricScope?: string;
 }
 
 /** Formato di una metrica dentro una colonna-periodo, quando le metriche sono sulle righe. */
@@ -410,6 +410,8 @@ export interface TableColumn {
   calculationType?: TableCalculationType;
   /** Metriche sulle righe: formato di ciascuna metrica in questa colonna-periodo. */
   perMetric?: Record<string, MetricRowFormat>;
+  /** Metriche sulle righe: colonna che mostra il valore delle righe metrica (non quello di una metrica-colonna). */
+  valueColumn?: boolean;
 }
 
 export interface PivotHeaderGroup {

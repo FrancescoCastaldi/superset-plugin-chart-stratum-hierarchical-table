@@ -74,6 +74,8 @@ export interface TransformOptions {
   metricsOnRows: boolean;
   metricsRowLevel: MetricsRowLevel;
   metricsRowSubtotals: boolean;
+  /** Metriche che diventano righe; vuoto significa tutte. */
+  metricsRowMetrics: string[];
   stickyHeader: boolean;
   enableSearch: boolean;
   compactMode: boolean;
@@ -368,6 +370,9 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     metricsRowSubtotals: Boolean(
       mergedFormData.metricsRowSubtotals ?? mergedFormData.metrics_row_subtotals ?? true,
     ),
+    metricsRowMetrics: ensureIsArray(
+      mergedFormData.metricsRowMetrics ?? mergedFormData.metrics_row_metrics,
+    ).filter((name: unknown): name is string => typeof name === 'string' && name !== ''),
     stickyHeader: Boolean(stickyHeader ?? sticky_header ?? true),
     enableSearch: Boolean(enableSearch ?? enable_search ?? true),
     compactMode: Boolean(compactMode ?? compact_mode ?? false),

@@ -1,5 +1,13 @@
 import { ControlPanelConfig, sharedControls } from '@superset-ui/chart-controls';
-import { choicesFromExplore, hasPivot, isMultiDim, isParentChild, isSinglePivot, isTwoWayPivot } from './helpers';
+import {
+  choicesFromExplore,
+  hasPivot,
+  isMultiDim,
+  isParentChild,
+  isSinglePivot,
+  isTwoWayPivot,
+  tableMetricNamesOf,
+} from './helpers';
 import RowListControl from '../controls/RowListControl';
 import { jsonSyntaxValidator } from '../controls/listModel';
 import {
@@ -109,6 +117,7 @@ const datiSection: Section = {
         config: {
           type: RowListControl as any,
           storedAs: 'json',
+          stack: true,
           fields: CALCULATED_METRICS_FIELDS,
           exampleRows: CALCULATED_METRICS_EXAMPLE,
           newRow: () => ({ type: 'formula' }),
@@ -151,6 +160,26 @@ const datiSection: Section = {
           description:
             "Mette le metriche come righe dell'albero invece che come colonne: ogni riga metrica ha i propri valori sotto la struttura. Esempio: Sede > Ambulatorio > [Ricavi, Costi], dove le colonne diventano i periodi del pivot oppure una sola colonna Valore. Non disponibile con il pivot a due colonne.",
           visibility: isMetricsRowsAvailable,
+        },
+      },
+    ],
+    [
+      {
+        name: 'metricsRowMetrics',
+        config: {
+          type: 'SelectControl',
+          multi: true,
+          freeForm: false,
+          clearable: true,
+          label: 'Quali metriche sulle righe',
+          default: [],
+          renderTrigger: true,
+          mapStateToProps: (explore: any) => ({
+            choices: tableMetricNamesOf(explore).map(v => [v, v]),
+          }),
+          description:
+            'Le metriche scelte diventano righe della gerarchia, le altre restano colonne. Lascia vuoto per metterle tutte sulle righe. Esempio: scegli Importo Totem ZC per averlo sotto ogni mese, e Totale Incassi resta una colonna.',
+          visibility: isMetricsRowsOn,
         },
       },
     ],

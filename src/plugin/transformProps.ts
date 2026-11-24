@@ -248,7 +248,12 @@ export default function transformProps(
   const metricsOnRows = options.metricsOnRows && options.dimensions.length > 0 && options.pivotDimensions.length < 2;
   const rowsView = metricsOnRows
     ? pivotMetricsToRows(treeData, columns, {
-        metrics,
+        allMetrics: metrics,
+        // The chosen metrics become rows (in the order of the chart); an empty choice means all of them.
+        metrics:
+          options.metricsRowMetrics.length > 0
+            ? metrics.filter(m => options.metricsRowMetrics.includes(m))
+            : metrics,
         position: metricsRowPosition(options.metricsRowLevel, options.dimensions.length),
         dimensionCount: options.dimensions.length,
         subtotals: options.metricsRowSubtotals,

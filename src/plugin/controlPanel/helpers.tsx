@@ -43,6 +43,22 @@ export const dimensionNamesOf = (explore: any): string[] => {
     .filter(Boolean);
 };
 
+/** Metriche del grafico e metriche calcolate, nell'ordine in cui compaiono nella tabella. */
+export const tableMetricNamesOf = (explore: any): string[] => {
+  const raw = explore?.controls?.calculatedMetrics?.value;
+  let rows: any[] = [];
+  try {
+    const parsed = typeof raw === 'string' && raw.trim() !== '' ? JSON.parse(raw) : raw;
+    rows = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    rows = [];
+  }
+  const calculated = rows
+    .map((row: any) => (typeof row?.metric === 'string' ? row.metric.trim() : ''))
+    .filter(Boolean);
+  return Array.from(new Set([...metricNamesOf(explore), ...calculated]));
+};
+
 /** Metriche salvate del dataset (tutte, anche quelle non ancora scelte nel grafico). */
 export const savedMetricNamesOf = (explore: any): string[] => {
   const raw = explore?.datasource?.metrics;

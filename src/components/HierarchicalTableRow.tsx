@@ -94,11 +94,15 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
       : activeDisplayMode === 'leaves_only'
       ? !hasChildren
       : hasChildren;
-  // Metriche sulle righe: una riga di dimensione non ha valori nelle colonne dei periodi.
-  const renderValues = displayValues && !node.valueless;
+  const renderValues = displayValues;
+  // Metriche sulle righe: la colonna "Valore" ha cifre solo sulle righe metrica (e sotto di esse),
+  // e le colonne delle metriche rimaste colonne non ne hanno sulle righe metrica.
+  const rowMetric = node.metricRow?.metric ?? node.metricScope;
+  const isHiddenCell = (col: TableColumn) =>
+    col.isMetric && (col.valueColumn ? !rowMetric : Boolean(node.metricRow));
   const cellValue = (key: string) => node.metrics?.[key] ?? node.subtotals?.[key];
   const cellFormats = displayCols.map(col =>
-    renderValues ? columnMetaMap.get(col.key)?.conditionalFormat?.(cellValue(col.key)) : null,
+    renderValues && !isHiddenCell(col) ? columnMetaMap.get(col.key)?.conditionalFormat?.(cellValue(col.key)) : null,
   );
   // A row-scoped match formats every metric cell of the row, competing by priority with the
   // cell's own match.
@@ -107,7 +111,7 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
   const openMenu = (col?: TableColumn) => (onContextMenu ? (e: React.MouseEvent) => onContextMenu(e, node, col) : undefined);
 
   const renderCell = (col: TableColumn, index: number) => {
-    if (!renderValues) {
+    if (!renderValues || isHiddenCell(col)) {
       return <td key={col.key} className="metric-cell empty-metric-cell" onContextMenu={openMenu(col)} />;
     }
 
@@ -135,8 +139,8 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
     const isDelta = meta?.isDelta ?? false;
     const numeric = numericValue(val);
     // Metriche sulle righe: ogni riga formatta con la propria metrica.
-    const cellFormatter = node.metricRow
-      ? col.perMetric?.[node.metricRow.metric]?.formatter ?? col.formatter
+    const cellFormatter = rowMetric
+      ? col.perMetric?.[rowMetric]?.formatter ?? col.formatter
       : col.formatter;
 
     const bound =
@@ -257,7 +261,6 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
         'selected-filter-row': isFilterSelected,
         'metric-row': Boolean(node.metricRow),
         'metric-subtotal-row': Boolean(node.metricRow?.subtotal),
-        'valueless-row': Boolean(node.valueless),
       })}
       onContextMenu={openMenu()}
     >
