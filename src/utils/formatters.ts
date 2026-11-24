@@ -2,10 +2,8 @@ import { getNumberFormatter } from '@superset-ui/core';
 import { MinMaxBound } from '../types';
 import { isDistinctEntityMetric } from './aggregations';
 import { hasDiffToken } from './nameHeuristics';
+import { formatNumber, italianNumber } from '../utils/numberFormat';
 
-const INTEGER_FORMAT = new Intl.NumberFormat('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-const DELTA_FORMAT = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 1 });
-const SMART_FORMAT = new Intl.NumberFormat('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 interface MetricNameInfo {
   lower: string;
@@ -48,7 +46,7 @@ export function formatMetricValue(
   // must always be formatted as integer counts, never as durations or float days
   const nameInfo = getMetricNameInfo(metricName || '');
   if (nameInfo.isDistinctEntity) {
-    return INTEGER_FORMAT.format(value);
+    return formatNumber(value, 0, 0);
   }
 
   const mName = nameInfo.lower;
@@ -60,7 +58,7 @@ export function formatMetricValue(
     !mName.includes('accesso')
   ) {
     const sign = value > 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)} p.p.`;
+    return `${sign}${formatNumber(value, 1, 1)} p.p.`;
   }
 
   // 2. Acceptance rate (percentage) — exclude volume counts like 'Accettazione Totale'
@@ -72,7 +70,7 @@ export function formatMetricValue(
       !mName.includes('numero') &&
       !mName.includes('conteggio'))
   ) {
-    return `${value.toFixed(1)}%`;
+    return `${formatNumber(value, 1, 1)}%`;
   }
 
   // 3. Delta Lead Time in days (gg)
@@ -82,7 +80,7 @@ export function formatMetricValue(
     (mName.includes('lt_off') || mName.includes('lead') || (mName.includes('giorni') && !mName.includes('settimana')) || /\blt\b/.test(mName) || mName.includes(' gg') || mName.includes('_gg'))
   ) {
     const sign = value > 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)} gg`;
+    return `${sign}${formatNumber(value, 1, 1)} gg`;
   }
 
   // 4. Lead Time in days (gg)
@@ -90,7 +88,7 @@ export function formatMetricValue(
     !formatterString?.startsWith('DURATION') &&
     (mName.includes('lt_off') || (mName.includes('giorni') && !mName.includes('settimana')) || mName.includes(' gg') || mName.includes('_gg') || mName.endsWith('(gg)'))
   ) {
-    return `${value.toFixed(1)} gg`;
+    return `${formatNumber(value, 1, 1)} gg`;
   }
 
   // 5. Percentage Variation / Delta with sign (+/- X.X%)
@@ -103,28 +101,28 @@ export function formatMetricValue(
       (mName.includes('%') || mName.includes('pct') || mName.includes('percent')))
   ) {
     const sign = value > 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)}%`;
+    return `${sign}${formatNumber(value, 1, 1)}%`;
   }
 
   // 6. General percentage metrics (rate, ratio, share)
   if (mName.includes('%') || mName.includes('pct') || mName.includes('percent') || mName.includes('tasso')) {
-    return `${value.toFixed(1)}%`;
+    return `${formatNumber(value, 1, 1)}%`;
   }
 
   // 7. General delta with sign
   if (mName.startsWith('delta') || mName.includes('delta_') || (mName.includes('variazione') || mName.includes('change')) || hasDiffToken(mName)) {
     const sign = value > 0 ? '+' : '';
-    return `${sign}${DELTA_FORMAT.format(value)}`;
+    return `${sign}${formatNumber(value, 1, 0)}`;
   }
 
   let formatted = '';
   try {
     if (formatterString && formatterString !== 'SMART_NUMBER') {
       const formatter = getNumberFormatter(formatterString);
-      formatted = formatter(value);
+      formatted = italianNumber(formatter(value));
     } else {
       // Italian localized thousands separator (e.g. 1.250)
-      formatted = SMART_FORMAT.format(value);
+      formatted = formatNumber(value, 2, 0);
     }
   } catch {
     formatted = String(value);

@@ -30,6 +30,7 @@ import {
   TimeDeltaStrategyConfig,
 } from '../utils/timeComparison';
 import { msg } from '../i18n';
+import { italianNumber } from '../utils/numberFormat';
 
 export const HIERARCHY_COLUMN_KEY = '__hierarchy_tree__';
 export const ROW_TOTALS_GROUP_KEY = '__pivot_row_totals__';
@@ -72,7 +73,7 @@ export function createMetricFormatter(format: ValueFormat, metricName: string) {
 }
 
 export function formatSignedPercent(val: any): string {
-  return val === null || val === undefined ? '-' : `${val > 0 ? '+' : ''}${val}%`;
+  return val === null || val === undefined ? '-' : `${val > 0 ? '+' : ''}${italianNumber(String(val))}%`;
 }
 
 /** Conditional format of one cell of a column from its value; null when no rule applies. */

@@ -4,6 +4,7 @@ import { MetricGoal, MetricPolarity, TableColumn, CellInterval } from '../../typ
 import { GOAL_STATUS_LABELS, computeGoalDelta, formatGoalDelta } from '../../utils/goalBenchmark';
 import { computeWhatIfDelta } from '../../utils/whatIfEngine';
 import { arrowOf, deltaClassName, signedPercent } from './cellUtils';
+import { formatNumber } from '../../utils/numberFormat';
 
 /** Scostamento dall'obiettivo di una metrica, con il suo stato (raggiunto, in linea, a rischio, mancato). */
 export function GoalBadge({
@@ -69,7 +70,7 @@ export function DeltaPill({
   return (
     <span className={classNames('delta-badge', className)} title={msg(titleKey, { value: signedPercent(value) })}>
       {arrowOf(value)}
-      {Math.abs(value).toFixed(1)}%
+      {formatNumber(Math.abs(value), 1, 1)}%
     </span>
   );
 }
@@ -120,7 +121,7 @@ export function WhatIfPill({
       })}
     >
       {isPositive ? '▲ +' : '▼ '}
-      {Math.abs(delta.pct).toFixed(1)}%
+      {formatNumber(Math.abs(delta.pct), 1, 1)}%
     </span>
   );
 }

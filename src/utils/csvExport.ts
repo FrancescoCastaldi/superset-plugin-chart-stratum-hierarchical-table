@@ -2,6 +2,7 @@ import { HierarchyValueDisplayMode, TableColumn, TreeNode, WhatIfBaseline } from
 import { computeWhatIfDelta } from './whatIfEngine';
 import { msg } from '../i18n';
 import { displayName } from './labels';
+import { formatNumber } from '../utils/numberFormat';
 
 export const CSV_EXPORT_FILENAME = 'stratum_tree_export.csv';
 
@@ -95,7 +96,7 @@ export function buildCsvRows({
       if (simNum !== null && baseNum !== null) {
         const delta = computeWhatIfDelta(simNum, baseNum);
         if (delta.pct !== null) {
-          deltaPctStr = `${delta.pct > 0 ? '+' : ''}${delta.pct.toFixed(1)}%`;
+          deltaPctStr = `${delta.pct > 0 ? '+' : ''}${formatNumber(delta.pct, 1, 1)}%`;
         }
       }
       result.push(baseValStr, simValStr, deltaPctStr);

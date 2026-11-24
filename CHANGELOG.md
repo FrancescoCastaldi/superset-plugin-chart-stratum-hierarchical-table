@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-24
+
+### Changed
+- **Numbers in Italian format.** Percentages, percentage points, days, variations and the output of the number formats of Superset are written with the decimal comma and the dot for the thousands (`1.234`, `12,3%`, `+4,5 p.p.`), in the cells, the variations, the goal badges and the CSV export.
+
 ## [1.2.0] - 2026-11-24
 
 ### Added

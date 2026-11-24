@@ -4,6 +4,7 @@ import { formatMetricValue } from '../utils/formatters';
 import { COMPARISON_SUFFIX } from '../utils/timeComparison';
 import type { ColumnLayout, ValueFormat } from './columnBuilders';
 import { NEW_VALUE } from '../utils/labels';
+import { formatNumber } from '../utils/numberFormat';
 
 /**
  * Paired comparison: next to every value cell, the same cell computed on the comparison period
@@ -175,9 +176,9 @@ function deltaFormatter(format: ComparisonFormat, value: ValueFormat, metric: st
           : signed(val, `${val}%`);
     case 'pp':
       return (val: any) =>
-        val === null || val === undefined ? '-' : signed(val, `${val.toFixed(1)} pp`);
+        val === null || val === undefined ? '-' : signed(val, `${formatNumber(val, 1, 1)} pp`);
     case 'ratio':
-      return (val: any) => (val === null || val === undefined ? '-' : `${val.toFixed(2)}×`);
+      return (val: any) => (val === null || val === undefined ? '-' : `${formatNumber(val, 2, 2)}×`);
     default:
       return (val: any) =>
         formatMetricValue(val, value.numberFormat, value.currencySymbol, `${metric}___delta`);

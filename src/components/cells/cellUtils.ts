@@ -1,7 +1,8 @@
 import { MetricPolarity, TableColumn, TreeNode } from '../../types';
+import { formatNumber } from '../../utils/numberFormat';
 
 /** Numero con segno e un decimale: +14.2%, -3.0%. */
-export const signedPercent = (value: number): string => `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+export const signedPercent = (value: number): string => `${value > 0 ? '+' : ''}${formatNumber(value, 1, 1)}%`;
 
 /** Freccia che precede una variazione: su con il più, giù con il meno, niente a zero. */
 export const arrowOf = (value: number): string => (value > 0 ? '▲ +' : value < 0 ? '▼ ' : '');

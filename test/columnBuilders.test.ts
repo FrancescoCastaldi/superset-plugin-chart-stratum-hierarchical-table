@@ -26,11 +26,11 @@ describe('columnBuilders', () => {
   it('formats signed percentages and metric values', () => {
     expect(formatSignedPercent(null)).toBe('-');
     expect(formatSignedPercent(undefined)).toBe('-');
-    expect(formatSignedPercent(12.5)).toBe('+12.5%');
+    expect(formatSignedPercent(12.5)).toBe('+12,5%');
     expect(formatSignedPercent(-3)).toBe('-3%');
     expect(formatSignedPercent(0)).toBe('0%');
-    expect(createMetricFormatter(format, 'delta_richieste_pct')(20)).toBe('+20.0%');
-    expect(createMetricFormatter({ numberFormat: ',.2f', currencySymbol: '€' }, 'sales')(5)).toBe('€ fmt[,.2f](5)');
+    expect(createMetricFormatter(format, 'delta_richieste_pct')(20)).toBe('+20,0%');
+    expect(createMetricFormatter({ numberFormat: ',.2f', currencySymbol: '€' }, 'sales')(5)).toBe('€ fmt[.,2f](5)');
   });
 
   it('builds the hierarchy column title from the dimensions', () => {

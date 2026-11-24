@@ -157,8 +157,8 @@ describe('paired calendar comparison', () => {
       const pp = props.columns.find(c => c.key === 'visite___Lunedì___pp');
       expect(ratio?.deltaBaseline).toBe(1);
       expect(pp?.deltaBaseline).toBeUndefined();
-      expect(ratio?.formatter?.(1.2)).toBe('1.20×');
-      expect(pp?.formatter?.(3.456)).toBe('+3.5 pp');
+      expect(ratio?.formatter?.(1.2)).toBe('1,20×');
+      expect(pp?.formatter?.(3.456)).toBe('+3,5 pp');
       expect(row(props.data, 'A').metrics['visite___Lunedì___ratio']).toBe(1.2);
     });
 

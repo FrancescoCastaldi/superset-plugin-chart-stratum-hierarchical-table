@@ -7,6 +7,7 @@ import {
   TreeNode,
 } from '../types';
 import { formatMetricValue } from './formatters';
+import { formatNumber } from '../utils/numberFormat';
 
 export type {
   TableCalculationConfig,
@@ -49,9 +50,9 @@ export function getCalculationFormatter(
   switch (type) {
     case 'pct_of_total':
     case 'pct_of_parent':
-      return (val: any) => (val == null || isNaN(val) ? '-' : `${Number(val).toFixed(1)}%`);
+      return (val: any) => (val == null || isNaN(val) ? '-' : `${formatNumber(Number(val), 1, 1)}%`);
     case 'diff_from_previous_pct':
-      return (val: any) => (val == null || isNaN(val) ? '-' : `${val > 0 ? '+' : ''}${Number(val).toFixed(1)}%`);
+      return (val: any) => (val == null || isNaN(val) ? '-' : `${val > 0 ? '+' : ''}${formatNumber(Number(val), 1, 1)}%`);
     case 'rank':
       return (val: any) => (val == null || isNaN(val) ? '-' : `#${val}`);
     case 'running_total':

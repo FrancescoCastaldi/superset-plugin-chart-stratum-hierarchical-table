@@ -43,8 +43,8 @@ describe('computeGoalDelta', () => {
   });
 
   it('formats the comparison as a signed percentage, or an absolute gap for zero targets', () => {
-    expect(formatGoalDelta(computeGoalDelta(110, higher(100)))).toBe('+10.0%');
-    expect(formatGoalDelta(computeGoalDelta(80, lower(100)))).toBe('-20.0%');
+    expect(formatGoalDelta(computeGoalDelta(110, higher(100)))).toBe('+10,0%');
+    expect(formatGoalDelta(computeGoalDelta(80, lower(100)))).toBe('-20,0%');
     expect(formatGoalDelta(computeGoalDelta(-3, higher(0)))).toBe('-3');
     expect(formatGoalDelta(computeGoalDelta(5, lower(0)), v => `${v} EUR`)).toBe('+5 EUR');
   });

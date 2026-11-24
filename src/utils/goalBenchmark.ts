@@ -1,5 +1,6 @@
 import { GoalDelta, GoalDirection, GoalStatus, MetricGoal } from '../types';
 import { msg } from '../i18n';
+import { formatNumber } from '../utils/numberFormat';
 
 /** Minimum attainment ratio (actual vs target, inverted for lower_is_better) of each band. */
 export const DEFAULT_GOAL_THRESHOLDS = {
@@ -59,7 +60,7 @@ export function formatGoalDelta(
   formatValue: (val: number) => string = String,
 ): string {
   if (delta.deltaPct !== null) {
-    return `${delta.deltaPct > 0 ? '+' : ''}${delta.deltaPct.toFixed(1)}%`;
+    return `${delta.deltaPct > 0 ? '+' : ''}${formatNumber(delta.deltaPct, 1, 1)}%`;
   }
   return `${delta.deltaAbsolute > 0 ? '+' : ''}${formatValue(delta.deltaAbsolute)}`;
 }

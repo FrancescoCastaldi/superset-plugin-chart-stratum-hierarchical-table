@@ -11,6 +11,7 @@ import {
   TreeNode,
 } from '../types';
 import { weightedMean } from './aggregations';
+import { formatNumber } from './numberFormat';
 import { FormulaNode, evaluateFormula, parseFormula } from './formulaEngine';
 
 const METRIC_TYPES: readonly MetricType[] = ['sum', 'mean', 'distinct_count', 'ratio', 'delta_pct', 'diff', 'formula', 'none'];
@@ -153,10 +154,7 @@ export function findMetricDefinition(
 const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
 function fixed(value: number, decimals: number): string {
-  return new Intl.NumberFormat('it-IT', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
+  return formatNumber(value, decimals, decimals);
 }
 
 /** Seconds as mm:ss, or h:mm:ss from one hour. */

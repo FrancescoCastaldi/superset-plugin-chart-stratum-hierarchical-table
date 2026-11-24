@@ -195,6 +195,6 @@ describe('csvExport', () => {
     const asl1Row = rows.find(r => r[0].includes('ASL1'))!;
     expect(asl1Row[1]).toBe('80');
     expect(asl1Row[2]).toBe('100');
-    expect(asl1Row[3]).toBe('+25.0%');
+    expect(asl1Row[3]).toBe('+25,0%');
   });
 });
