@@ -139,7 +139,8 @@ export const METRIC_DEFINITIONS_EXAMPLE: ListRow[] = [
 
 export const METRIC_DEFINITIONS_SCHEMA = [
   'metric: nome della metrica (obbligatorio)',
-  'type: sum, mean, distinct_count, ratio, delta_pct, diff, none (obbligatorio)',
+  'type: sum, mean, distinct_count, ratio, delta_pct, diff, formula, none (obbligatorio)',
+  'formula: espressione sulle altre metriche, es. ([ricavi] - costi) / ricavi * 100 (obbligatoria per type formula); label: titolo della colonna',
   'ratio: numerator e denominator (obbligatori), scale, ci (none, wilson, poisson), ciLevel, compareTo (parent, total, goal)',
   'delta_pct e diff: current e baseline (obbligatori)',
   'mean: weight (metrica peso); distinct_count: entityDimension',
@@ -147,6 +148,46 @@ export const METRIC_DEFINITIONS_SCHEMA = [
   'polarity: higher_is_better oppure lower_is_better',
   'calculation: pct_of_total, pct_of_parent, running_total, diff_from_previous, diff_from_previous_pct, rank',
 ];
+
+/** Metriche calcolate: righe che il grafico unisce alle definizioni di metrica come `type: formula`. */
+export const CALCULATED_METRICS_FIELDS: FieldSpec[] = [
+  { key: 'metric', label: 'Nome della metrica', kind: 'text', placeholder: 'es. margine' },
+  {
+    key: 'formula',
+    label: 'Formula',
+    kind: 'formula',
+    placeholder: 'es. ([ricavi] - [costi]) / [ricavi] * 100',
+    hint: 'Trascina una metrica nel riquadro o cliccala. Operatori: + - * /, parentesi, abs, min, max, round.',
+  },
+  { key: 'label', label: 'Titolo della colonna', kind: 'text', placeholder: 'es. Margine %' },
+  {
+    key: 'format',
+    label: 'Formato',
+    kind: 'select',
+    options: [
+      ['integer', 'numero intero'],
+      ['decimal', 'numero con decimali'],
+      ['percent', 'percentuale'],
+      ['currency', 'valuta'],
+      ['duration', 'durata'],
+      ['days', 'giorni'],
+    ],
+  },
+  { key: 'decimals', label: 'Decimali', kind: 'number', placeholder: 'es. 1' },
+];
+
+export const CALCULATED_METRICS_EXAMPLE: ListRow[] = [
+  {
+    metric: 'margine',
+    type: 'formula',
+    formula: '([ricavi] - [costi]) / [ricavi] * 100',
+    label: 'Margine %',
+    format: 'percent',
+    decimals: 1,
+  },
+];
+
+export const calculatedMetricsNormalize = (entries: unknown[]): unknown[] => normalizeMetricDefinitions(entries);
 
 export const TABLE_CALCULATIONS_EXAMPLE: ListRow[] = [{ type: 'pct_of_total', metric: 'ricavi' }];
 

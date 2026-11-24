@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { ControlHeader } from '@superset-ui/chart-controls';
+import { parseFormula } from '../../utils/formulaEngine';
 import {
   ListRow,
   StoredAs,
@@ -13,7 +14,30 @@ import {
   withField,
 } from './listModel';
 
-export type FieldKind = 'metric' | 'dimension' | 'select' | 'number' | 'text' | 'color';
+/** 'formula': area di testo con le metriche del dataset come elementi da trascinare o cliccare. */
+export type FieldKind = 'metric' | 'dimension' | 'select' | 'number' | 'text' | 'color' | 'formula';
+
+/** Segnaposto di una metrica dentro una formula: sempre tra parentesi quadre, anche con spazi o simboli. */
+export const metricToken = (name: string): string => `[${name}]`;
+
+/** Testo con `token` al posto della selezione, e la posizione del cursore dopo l'inserimento. */
+export function insertToken(
+  text: string,
+  token: string,
+  selectionStart: number,
+  selectionEnd: number,
+): { text: string; caret: number } {
+  const start = Math.max(0, Math.min(selectionStart, text.length));
+  const end = Math.max(start, Math.min(selectionEnd, text.length));
+  return { text: text.slice(0, start) + token + text.slice(end), caret: start + token.length };
+}
+
+/** Metriche citate da una formula che sono salvate nel dataset: vanno chieste alla query. */
+export function operandsOf(formula: string, datasetMetrics: string[]): string[] {
+  const parsed = parseFormula(formula);
+  if (!parsed.ok) return [];
+  return parsed.refs.filter(ref => datasetMetrics.includes(ref));
+}
 
 export interface FieldSpec {
   key: string;
@@ -55,6 +79,8 @@ export interface RowListControlProps {
   /** Da mapStateToProps: metriche e dimensioni scelte nella sezione Dati. */
   metricChoices?: string[];
   dimensionChoices?: string[];
+  /** Da mapStateToProps: tutte le metriche salvate del dataset. */
+  datasetMetricChoices?: string[];
 }
 
 const box = {
@@ -93,8 +119,11 @@ export default function RowListControl(props: RowListControlProps) {
     emptyHint = 'Nessuna voce.',
     metricChoices = [],
     dimensionChoices = [],
+    datasetMetricChoices = [],
   } = props;
   const uid = useId();
+  // Per le formule: le metriche scelte nel grafico e quelle salvate nel dataset, senza doppioni.
+  const formulaChoices = Array.from(new Set([...metricChoices, ...datasetMetricChoices]));
 
   const parsed = parseList(value);
   const toRows = (rows: ListRow[]) => rows.map(row => applyAliases(row, aliases));
@@ -120,6 +149,24 @@ export default function RowListControl(props: RowListControlProps) {
 
   const setField = (index: number, key: string, fieldValue: unknown) =>
     commit(rows.map((row, i) => (i === index ? withField(row, key, fieldValue) : row)));
+
+  // Salva la formula e, accanto, le metriche del dataset che cita: la query le chiede anche se non sono scelte nel grafico.
+  const setFormula = (index: number, key: string, text: string, caret?: number, textareaId?: string) => {
+    const operands = operandsOf(text, datasetMetricChoices);
+    commit(
+      rows.map((row, i) =>
+        i === index ? withField(withField(row, key, text.trim()), 'operands', operands.length > 0 ? operands : undefined) : row,
+      ),
+    );
+    if (caret !== undefined && textareaId) {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(textareaId) as HTMLTextAreaElement | null;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(caret, caret);
+      });
+    }
+  };
 
   const move = (index: number, delta: number) => {
     const target = index + delta;
@@ -147,6 +194,59 @@ export default function RowListControl(props: RowListControlProps) {
             </option>
           ))}
         </select>
+      );
+    } else if (spec.kind === 'formula') {
+      const insertFromChip = (name: string) => {
+        const el = document.getElementById(id) as HTMLTextAreaElement | null;
+        const base = el ? el.value : text;
+        const start = el ? el.selectionStart : base.length;
+        const end = el ? el.selectionEnd : base.length;
+        const next = insertToken(base, metricToken(name), start, end);
+        setFormula(index, spec.key, next.text, next.caret, id);
+      };
+      input = (
+        <>
+          {formulaChoices.length > 0 && (
+            <div role="group" aria-label="Metriche disponibili" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+              {formulaChoices.map(name => (
+                <button
+                  key={name}
+                  type="button"
+                  draggable
+                  title="Trascina nella formula o clicca per inserire"
+                  onDragStart={e => {
+                    e.dataTransfer.setData('text/plain', metricToken(name));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  onClick={() => insertFromChip(name)}
+                  style={{ cursor: 'grab', fontSize: 12, padding: '1px 6px', borderRadius: 10 }}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+          <textarea
+            id={id}
+            rows={3}
+            defaultValue={text}
+            key={`${id}-${text}`}
+            placeholder={spec.placeholder}
+            style={{ width: '100%' }}
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => {
+              e.preventDefault();
+              const token = e.dataTransfer.getData('text/plain');
+              if (!token) return;
+              const el = e.currentTarget;
+              const next = insertToken(el.value, token, el.selectionStart, el.selectionEnd);
+              setFormula(index, spec.key, next.text, next.caret, id);
+            }}
+            onBlur={e => {
+              if (e.target.value.trim() !== text.trim()) setFormula(index, spec.key, e.target.value);
+            }}
+          />
+        </>
       );
     } else if (spec.kind === 'number') {
       input = (
@@ -212,8 +312,22 @@ export default function RowListControl(props: RowListControlProps) {
       messages.push('Questa voce verrà ignorata dal grafico: compila i campi obbligatori.');
     }
     const metric = row.metric;
-    if (typeof metric === 'string' && metric && metricChoices.length > 0 && !metricChoices.includes(metric)) {
+    const hasFormulaField = fields.some(spec => spec.kind === 'formula');
+    // Le righe con formula nominano una metrica nuova: non deve essere tra quelle scelte.
+    if (!hasFormulaField && typeof metric === 'string' && metric && metricChoices.length > 0 && !metricChoices.includes(metric)) {
       messages.push('La metrica non è tra quelle scelte nella sezione Dati.');
+    }
+    const formula = row.formula;
+    if (hasFormulaField && typeof formula === 'string' && formula.trim() !== '') {
+      const parsedFormula = parseFormula(formula);
+      if (!parsedFormula.ok) {
+        messages.push(`Formula non valida: ${parsedFormula.error} (posizione ${parsedFormula.position + 1}).`);
+      } else if (formulaChoices.length > 0) {
+        const missing = parsedFormula.refs.filter(ref => !formulaChoices.includes(ref) && !rows.some(r => r.metric === ref));
+        if (missing.length > 0) {
+          messages.push(`Metriche non trovate tra quelle del dataset o del grafico: ${missing.join(', ')}.`);
+        }
+      }
     }
     return messages;
   };

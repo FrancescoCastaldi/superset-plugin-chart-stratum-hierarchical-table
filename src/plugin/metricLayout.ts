@@ -67,8 +67,11 @@ export function buildMetricLayout(
   options: TransformOptions,
   metrics: string[],
   timeMetrics?: ReadonlySet<string>,
+  /** Metrics the formulas cite but the table does not show: no columns, but they get row totals. */
+  hiddenMetrics: string[] = [],
 ): ColumnLayout {
   const format = { numberFormat: options.numberFormat, currencySymbol: options.currencySymbol };
+  const rowTotalMetrics = hiddenMetrics.length > 0 ? [...metrics, ...hiddenMetrics] : metrics;
   const { pivotDimensions, pivotRowTotalsPosition, pivotTimeDeltaMode } = options;
   const paired = options.showCalendarComparison && options.calendarComparisonMode === 'paired';
   const rowTotalAgg = rollupFunction(options.weightColumn, options.aggregationMode);
@@ -97,7 +100,7 @@ export function buildMetricLayout(
     if (pivotRowTotalsPosition !== 'none') {
       computeHorizontalRowTotals(
         treeData,
-        metrics,
+        rowTotalMetrics,
         displayDim1Values,
         rowTotalAgg,
         options.dimensions,
@@ -152,7 +155,7 @@ export function buildMetricLayout(
   if (pivotRowTotalsPosition !== 'none') {
     computeHorizontalRowTotals(
       treeData,
-      metrics,
+      rowTotalMetrics,
       chronologicalPivotValues,
       rowTotalAgg,
       options.dimensions,

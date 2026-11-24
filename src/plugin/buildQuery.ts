@@ -1,6 +1,7 @@
 import { buildQueryContext, QueryContext, ensureIsArray } from '@superset-ui/core';
 import { HierarchicalTableFormData } from '../types';
 import { buildPeriodMetrics, resolvePeriodColumns } from '../utils/dynamicPeriodLabels';
+import { getMetricNames, resolveHiddenMetrics } from './formDataOptions';
 
 export default function buildQuery(
   formData: HierarchicalTableFormData,
@@ -37,10 +38,14 @@ export default function buildQuery(
       baseQueryObject.extra_form_data?.time_compare,
     ).filter(Boolean);
 
+    // Saved metrics that calculated metrics (formulas) cite but the chart does not show are asked too.
+    const hiddenMetrics = resolveHiddenMetrics(fd, getMetricNames(metrics));
+    const baseMetrics = hiddenMetrics.length > 0 ? [...ensureIsArray(metrics), ...hiddenMetrics] : metrics;
+
     // With dynamic period labels the query also asks for the periods it is run on.
     const queryMetrics = fd.periodLabelsFromFilters
-      ? [...ensureIsArray(metrics), ...buildPeriodMetrics(resolvePeriodColumns(fd))]
-      : metrics;
+      ? [...ensureIsArray(baseMetrics), ...buildPeriodMetrics(resolvePeriodColumns(fd))]
+      : baseMetrics;
 
     const query: any = {
       ...baseQueryObject,

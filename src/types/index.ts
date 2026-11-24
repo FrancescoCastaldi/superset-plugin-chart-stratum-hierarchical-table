@@ -102,7 +102,7 @@ export interface ConditionalFormattingRule {
   icon?: ConditionalIcon;
 }
 
-export type MetricType = 'sum' | 'mean' | 'distinct_count' | 'ratio' | 'delta_pct' | 'diff' | 'none';
+export type MetricType = 'sum' | 'mean' | 'distinct_count' | 'ratio' | 'delta_pct' | 'diff' | 'formula' | 'none';
 
 export type MetricFormat = 'integer' | 'decimal' | 'percent' | 'duration' | 'days' | 'currency';
 
@@ -130,6 +130,10 @@ export interface MetricDefinition {
   /** 'delta_pct': (current - baseline) / baseline * 100. 'diff': current - baseline on every node, including parents and the grand total (node-level difference, never a sum or average of child diffs). */
   current?: string;
   baseline?: string;
+  /** 'formula': expression over other metrics, e.g. "([ricavi] - [costi]) / [ricavi] * 100". Evaluated on every row from the aggregated operands. */
+  formula?: string;
+  /** Title shown for the metric in place of its name (formula metrics, mainly). */
+  label?: string;
   format?: MetricFormat;
   decimals?: number;
   polarity?: MetricPolarity;
@@ -369,6 +373,18 @@ export interface TreeNode {
   isOthers?: boolean;
   /** Count of original items collapsed into this synthetic 'Others' row. */
   othersCount?: number;
+  /** Metriche sulle righe: la riga è una metrica (con i suoi valori) e non una dimensione. */
+  metricRow?: { metric: string; label: string; subtotal: boolean };
+  /** Metriche sulle righe: riga di dimensione, senza valori nelle colonne dei periodi. */
+  valueless?: boolean;
+}
+
+/** Formato di una metrica dentro una colonna-periodo, quando le metriche sono sulle righe. */
+export interface MetricRowFormat {
+  formatter?: (val: any) => any;
+  polarity?: MetricPolarity;
+  deltaBaseline?: number;
+  exportFormatted?: boolean;
 }
 
 export interface TableColumn {
@@ -392,6 +408,8 @@ export interface TableColumn {
   sparkline?: { metric: string; periods: string[] };
   /** Type of table calculation if this column represents a measure modifier. */
   calculationType?: TableCalculationType;
+  /** Metriche sulle righe: formato di ciascuna metrica in questa colonna-periodo. */
+  perMetric?: Record<string, MetricRowFormat>;
 }
 
 export interface PivotHeaderGroup {

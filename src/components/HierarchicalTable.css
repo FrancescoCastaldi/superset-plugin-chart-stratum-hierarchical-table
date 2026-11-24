@@ -1100,3 +1100,11 @@
   outline: 2px solid var(--st-info, #2563eb);
   outline-offset: 2px;
 }
+
+/* Metriche sulle righe: la riga metrica è in corsivo, il subtotale in grassetto. */
+.superset-hierarchical-table-container tr.metric-row td.hierarchy-cell .node-name {
+  font-style: italic;
+}
+.superset-hierarchical-table-container tr.metric-subtotal-row td.hierarchy-cell .node-name {
+  font-weight: 600;
+}

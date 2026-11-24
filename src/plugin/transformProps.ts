@@ -6,7 +6,9 @@ import {
 } from '../types';
 import { buildHierarchyColumn } from './columnBuilders';
 import { createClearFilterHandler, createCrossFilterHandler } from './eventHandlers';
-import { TransformOptions, resolveTransformOptions } from './formDataOptions';
+import { TransformOptions, metricsRowPosition, resolveTransformOptions } from './formDataOptions';
+import { pivotMetricsToRows } from '../utils/metricsOnRows';
+import { msg } from '../i18n';
 import { buildGrandTotalNode } from './grandTotal';
 import { buildMetricLayout, resolveTimeDeltaStrategy } from './metricLayout';
 import { writePairedDeltas } from './pairedComparison';
@@ -15,6 +17,7 @@ import { applyConfidenceIntervals } from '../utils/significance';
 import { applySuppression } from '../utils/suppression';
 import {
   applyMetricDefinitions,
+  baseMetricOf,
   findMetricDefinition,
   formatByDefinition,
 } from '../utils/metricSemantics';
@@ -56,6 +59,7 @@ function applyColumnDefinition(column: TableColumn, options: TransformOptions): 
   return {
     ...column,
     ...(def.polarity ? { polarity: def.polarity } : {}),
+    ...(def.label && !isDeltaColumn && column.title === def.metric ? { title: def.label } : {}),
     ...(def.format && !isDeltaColumn
       ? {
           formatter: (val: any) =>
@@ -155,10 +159,30 @@ export default function transformProps(
     };
   }
 
-  const { treeData, metrics } = buildTreeData(dataRecords, options, activeTimeMetrics);
+  // Operands of formulas that the chart does not show are aggregated like any metric, but get no column.
+  const { treeData, metrics: queryMetrics } = buildTreeData(
+    dataRecords,
+    options.hiddenMetrics.length > 0
+      ? { ...options, metrics: [...options.metrics, ...options.hiddenMetrics] }
+      : options,
+    activeTimeMetrics,
+  );
   // Explicit metric definitions first, so that the deltas computed by the layout read the right values.
   applyMetricDefinitions(treeData, undefined, options.metricDefinitions, options.dimensions);
-  const layout = buildMetricLayout(treeData, dataRecords, options, metrics, activeTimeMetrics);
+  // Formula metrics have no data of their own: they become columns here, after the tree is built.
+  const formulaMetrics = options.metricDefinitions
+    .filter(d => d.type === 'formula' && !queryMetrics.includes(d.metric))
+    .map(d => d.metric);
+  const metrics = [...queryMetrics.filter(m => !options.hiddenMetrics.includes(m)), ...formulaMetrics];
+  const layout = buildMetricLayout(treeData, dataRecords, options, metrics, activeTimeMetrics, options.hiddenMetrics);
+  // The hidden operands need their totals too: the formula of the grand total reads them.
+  const hiddenKeys = new Set<string>();
+  for (const root of treeData) {
+    for (const key of Object.keys(root.metrics)) {
+      if (options.hiddenMetrics.includes(baseMetricOf(key))) hiddenKeys.add(key);
+    }
+  }
+  const totalKeys = hiddenKeys.size > 0 ? [...layout.metricKeys, ...hiddenKeys] : layout.metricKeys;
 
   const definedColumns = layout.columns
     .map(column => applyColumnDefinition(column, options))
@@ -194,8 +218,8 @@ export default function transformProps(
   const grandTotalNode = buildGrandTotalNode({
     treeData,
     records: dataRecords,
-    metrics,
-    metricKeys: layout.metricKeys,
+    metrics: queryMetrics,
+    metricKeys: totalKeys,
     showGrandTotal: options.showGrandTotal,
     isPivotMode: options.isPivotMode,
     pivotDimensions: options.pivotDimensions,
@@ -219,12 +243,29 @@ export default function transformProps(
   // Last, so that nothing downstream (sorting, colours, export) ever sees a hidden value.
   applySuppression(treeData, options.suppression, options.metricDefinitions);
 
+  // Metriche sulle righe: the metrics become a level of the tree and the columns become the periods.
+  // Only for the flat table and the single pivot; the two-way pivot keeps metrics in columns.
+  const metricsOnRows = options.metricsOnRows && options.dimensions.length > 0 && options.pivotDimensions.length < 2;
+  const rowsView = metricsOnRows
+    ? pivotMetricsToRows(treeData, columns, {
+        metrics,
+        position: metricsRowPosition(options.metricsRowLevel, options.dimensions.length),
+        dimensionCount: options.dimensions.length,
+        subtotals: options.metricsRowSubtotals,
+        valueLabel: msg('metricRows.value'),
+        labelFor: m => findMetricDefinition(m, options.metricDefinitions)?.label ?? m,
+        grandTotal: options.showGrandTotal ? grandTotalNode : undefined,
+        grandTotalLabel: msg('metricRows.total'),
+        grandTotalPosition: options.grandTotalPosition,
+      })
+    : { data: treeData, columns };
+
   return {
     width,
     height,
-    data: treeData,
+    data: rowsView.data,
     rawRecords: dataRecords,
-    columns,
+    columns: rowsView.columns,
     pivotHeaderGroups: layout.pivotHeaderGroups,
     isPivotMode: options.isPivotMode,
     combineMetric: Boolean(options.combineMetric),
@@ -245,7 +286,7 @@ export default function transformProps(
     showSubtotals: options.showSubtotals,
     showGrandTotal: options.showGrandTotal,
     grandTotalPosition: options.grandTotalPosition,
-    grandTotalNode,
+    grandTotalNode: metricsOnRows ? undefined : grandTotalNode,
     stickyHeader: options.stickyHeader,
     enableSearch: options.enableSearch,
     enableHierarchicalSort: options.enableHierarchicalSort,

@@ -88,12 +88,14 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
       : Boolean(node.isLeaf || !hasChildren)
     : false;
 
-  const renderValues =
+  const displayValues =
     activeDisplayMode === 'all'
       ? true
       : activeDisplayMode === 'leaves_only'
       ? !hasChildren
       : hasChildren;
+  // Metriche sulle righe: una riga di dimensione non ha valori nelle colonne dei periodi.
+  const renderValues = displayValues && !node.valueless;
   const cellValue = (key: string) => node.metrics?.[key] ?? node.subtotals?.[key];
   const cellFormats = displayCols.map(col =>
     renderValues ? columnMetaMap.get(col.key)?.conditionalFormat?.(cellValue(col.key)) : null,
@@ -132,6 +134,10 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
     const format = firstByPriority([rowFormat, cellFormats[index]]);
     const isDelta = meta?.isDelta ?? false;
     const numeric = numericValue(val);
+    // Metriche sulle righe: ogni riga formatta con la propria metrica.
+    const cellFormatter = node.metricRow
+      ? col.perMetric?.[node.metricRow.metric]?.formatter ?? col.formatter
+      : col.formatter;
 
     const bound =
       inScope && hasMinMax
@@ -159,8 +165,8 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
         <NewBadge />
       ) : isDelta && typeof val === 'number' ? (
         <DeltaColumnValue value={val} col={col} titleKey="cell.deltaPct" />
-      ) : col.formatter ? (
-        col.formatter(val)
+      ) : cellFormatter ? (
+        cellFormatter(val)
       ) : (
         String(val ?? '-')
       );
@@ -249,6 +255,9 @@ const HierarchicalTableRow = React.memo(function HierarchicalTableRow({
       className={classNames({
         'parent-row': hasChildren,
         'selected-filter-row': isFilterSelected,
+        'metric-row': Boolean(node.metricRow),
+        'metric-subtotal-row': Boolean(node.metricRow?.subtotal),
+        'valueless-row': Boolean(node.valueless),
       })}
       onContextMenu={openMenu()}
     >

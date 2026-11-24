@@ -43,10 +43,28 @@ export const dimensionNamesOf = (explore: any): string[] => {
     .filter(Boolean);
 };
 
+/** Metriche salvate del dataset (tutte, anche quelle non ancora scelte nel grafico). */
+export const savedMetricNamesOf = (explore: any): string[] => {
+  const raw = explore?.datasource?.metrics;
+  const list: any[] = Array.isArray(raw) ? raw : [];
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const m of list) {
+    const name = typeof m === 'string' ? m : String(m?.metric_name ?? '');
+    const clean = name.trim();
+    if (clean && !seen.has(clean)) {
+      seen.add(clean);
+      names.push(clean);
+    }
+  }
+  return names;
+};
+
 // Metriche e dimensioni scelte in Dati: suggerimenti e controlli dei campi nei controlli a elenco.
 export const choicesFromExplore = (explore: any) => ({
   metricChoices: metricNamesOf(explore),
   dimensionChoices: dimensionNamesOf(explore),
+  datasetMetricChoices: savedMetricNamesOf(explore),
 });
 
 export const isMultiDim = ({ controls }: { controls: any }) =>

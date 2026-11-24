@@ -11,8 +11,9 @@ import {
   TreeNode,
 } from '../types';
 import { weightedMean } from './aggregations';
+import { FormulaNode, evaluateFormula, parseFormula } from './formulaEngine';
 
-const METRIC_TYPES: readonly MetricType[] = ['sum', 'mean', 'distinct_count', 'ratio', 'delta_pct', 'diff', 'none'];
+const METRIC_TYPES: readonly MetricType[] = ['sum', 'mean', 'distinct_count', 'ratio', 'delta_pct', 'diff', 'formula', 'none'];
 const METRIC_FORMATS: readonly MetricFormat[] = ['integer', 'decimal', 'percent', 'duration', 'days', 'currency'];
 const POLARITIES: readonly MetricPolarity[] = ['higher_is_better', 'lower_is_better'];
 const CI_METHODS: readonly ConfidenceMethod[] = ['none', 'wilson', 'poisson'];
@@ -74,6 +75,13 @@ export function normalizeMetricDefinitions(raw: unknown): MetricDefinition[] {
       def.denominator = text(e.denominator);
       if (!def.numerator || !def.denominator) continue;
       def.scale = finite(e.scale) ?? 1;
+    } else if (type === 'formula') {
+      def.formula = text(e.formula);
+      const parsed = parseFormula(def.formula);
+      // Una formula che non si legge, o che cita se stessa, viene scartata con la sua definizione.
+      if (!parsed.ok || parsed.refs.includes(metric)) continue;
+      const label = text(e.label);
+      if (label) def.label = label;
     } else if (type === 'delta_pct' || type === 'diff') {
       def.current = text(e.current);
       def.baseline = text(e.baseline);
@@ -255,6 +263,41 @@ function rollupFromChildren(
 
 const ROLLUP_TYPES: readonly MetricType[] = ['sum', 'mean', 'distinct_count', 'none'];
 
+interface CompiledFormula {
+  def: MetricDefinition;
+  ast: FormulaNode;
+  refs: string[];
+}
+
+/**
+ * Formulas in dependency order, so that a formula operand which is itself a formula is computed
+ * first. A formula in a reference cycle, or citing a formula that is dropped, is left out.
+ */
+function orderFormulas(definitions: MetricDefinition[]): CompiledFormula[] {
+  const compiled = new Map<string, CompiledFormula>();
+  for (const def of definitions) {
+    if (def.type !== 'formula') continue;
+    const parsed = parseFormula(def.formula ?? '');
+    if (parsed.ok) compiled.set(def.metric, { def, ast: parsed.ast, refs: parsed.refs });
+  }
+  const state = new Map<string, 'visiting' | 'done' | 'dropped'>();
+  const ordered: CompiledFormula[] = [];
+  const visit = (name: string): boolean => {
+    const seen = state.get(name);
+    if (seen === 'done') return true;
+    if (seen) return false;
+    const item = compiled.get(name);
+    if (!item) return false;
+    state.set(name, 'visiting');
+    const usable = item.refs.every(ref => !compiled.has(ref) || visit(ref));
+    state.set(name, usable ? 'done' : 'dropped');
+    if (usable) ordered.push(item);
+    return usable;
+  };
+  compiled.forEach((_item, name) => visit(name));
+  return ordered;
+}
+
 /**
  * Applies explicit metric definitions on top of the heuristic roll-up: parent rows and the grand
  * total of 'sum', 'mean', 'distinct_count' and 'none' metrics are rebuilt from their children,
@@ -270,12 +313,27 @@ export function applyMetricDefinitions(
   dimensions: string[] = [],
 ): void {
   if (definitions.length === 0 || tree.length === 0) return;
-  const keys = collectKeys(tree, grandTotal, new Set(definitions.map(d => d.metric)));
+  const formulas = orderFormulas(definitions);
+  const formulaOperands = formulas.flatMap(f => f.refs);
+  const keys = collectKeys(
+    tree,
+    grandTotal,
+    new Set([...definitions.map(d => d.metric), ...formulaOperands]),
+  );
+  // A formula metric has no data of its own: its keys are its operands' keys with the formula's name.
+  for (const { def, refs } of formulas) {
+    const suffixes = new Set<string>();
+    for (const ref of refs) for (const key of keys.get(ref) ?? []) suffixes.add(suffixOf(key));
+    keys.set(def.metric, Array.from(suffixes, suffix => def.metric + suffix));
+  }
+  const formulaAst = new Map(formulas.map(f => [f.def.metric, f.ast]));
   const rollupDefs = definitions.filter(d => ROLLUP_TYPES.includes(d.type));
   // Ratios and delta percentages first: a diff may use them as operands regardless of declaration order.
+  // Formulas last, in dependency order, so they read the ratios and diffs they cite.
   const computedDefs = [
     ...definitions.filter(d => d.type === 'ratio' || d.type === 'delta_pct'),
     ...definitions.filter(d => d.type === 'diff'),
+    ...formulas.map(f => f.def),
   ];
 
   const rollup = (node: TreeNode) => {
@@ -314,6 +372,11 @@ export function applyMetricDefinitions(
           const base = node.metrics[def.baseline! + suffix];
           if (isNumber(cur) && isNumber(base)) {
             setValue(node, key, Math.round((cur - base) * 10) / 10);
+          }
+        } else if (def.type === 'formula') {
+          const ast = formulaAst.get(def.metric);
+          if (ast) {
+            setValue(node, key, evaluateFormula(ast, name => node.metrics[name + suffix]));
           }
         } else {
           const cur = node.metrics[def.current! + suffix];

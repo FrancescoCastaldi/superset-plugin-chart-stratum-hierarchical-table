@@ -1,5 +1,17 @@
 import { ControlPanelConfig, sharedControls } from '@superset-ui/chart-controls';
-import { hasPivot, isMultiDim, isParentChild, isSinglePivot } from './helpers';
+import { choicesFromExplore, hasPivot, isMultiDim, isParentChild, isSinglePivot, isTwoWayPivot } from './helpers';
+import RowListControl from '../controls/RowListControl';
+import { jsonSyntaxValidator } from '../controls/listModel';
+import {
+  CALCULATED_METRICS_EXAMPLE,
+  CALCULATED_METRICS_FIELDS,
+  calculatedMetricsNormalize,
+} from '../controls/specs';
+
+// Le metriche sulle righe valgono per la tabella piatta e per il pivot a una colonna.
+const isMetricsRowsAvailable = (args: { controls: any }) => isMultiDim(args) && !isTwoWayPivot(args);
+const isMetricsRowsOn = (args: { controls: any }) =>
+  isMetricsRowsAvailable(args) && Boolean(args.controls?.metricsOnRows?.value);
 
 type Section = ControlPanelConfig['controlPanelSections'][number];
 
@@ -93,6 +105,29 @@ const datiSection: Section = {
     ],
     [
       {
+        name: 'calculatedMetrics',
+        config: {
+          type: RowListControl as any,
+          storedAs: 'json',
+          fields: CALCULATED_METRICS_FIELDS,
+          exampleRows: CALCULATED_METRICS_EXAMPLE,
+          newRow: () => ({ type: 'formula' }),
+          normalize: calculatedMetricsNormalize,
+          addLabel: 'Aggiungi metrica calcolata',
+          rowTitle: 'Metrica calcolata',
+          emptyHint: 'Nessuna metrica calcolata: aggiungine una per calcolare un valore da altre metriche.',
+          mapStateToProps: choicesFromExplore,
+          validators: [jsonSyntaxValidator],
+          label: 'Metriche calcolate',
+          default: '',
+          renderTrigger: false,
+          description:
+            'Aggiungi metriche calcolate con una formula tra altre metriche, ricalcolata su ogni riga della gerarchia, totali compresi. Trascina nel riquadro della formula le metriche del dataset oppure cliccale. Campi: metric (nome), formula, label (titolo), format, decimals. Esempio: margine = ([ricavi] - [costi]) / [ricavi] * 100.',
+        },
+      },
+    ],
+    [
+      {
         name: 'columns',
         config: {
           ...sharedControls.groupby,
@@ -102,6 +137,54 @@ const datiSection: Section = {
           description:
             'Distribuisce le metriche in orizzontale per i valori di una o due colonne. Lascia vuoto per una tabella piatta. Esempio: Mese per avere una colonna per ogni mese, oppure Anno e Trimestre per due livelli di intestazione.',
           visibility: isMultiDim,
+        },
+      },
+    ],
+    [
+      {
+        name: 'metricsOnRows',
+        config: {
+          type: 'CheckboxControl',
+          label: 'Metriche sulle righe',
+          renderTrigger: true,
+          default: false,
+          description:
+            "Mette le metriche come righe dell'albero invece che come colonne: ogni riga metrica ha i propri valori sotto la struttura. Esempio: Sede > Ambulatorio > [Ricavi, Costi], dove le colonne diventano i periodi del pivot oppure una sola colonna Valore. Non disponibile con il pivot a due colonne.",
+          visibility: isMetricsRowsAvailable,
+        },
+      },
+    ],
+    [
+      {
+        name: 'metricsRowLevel',
+        config: {
+          type: 'SelectControl',
+          label: 'Livello delle metriche',
+          default: 'last',
+          clearable: false,
+          renderTrigger: true,
+          choices: [
+            ['last', "Dopo l'ultimo livello"],
+            ['top', 'Prima del primo livello'],
+            ['after_1', 'Dopo il primo livello'],
+            ['after_2', 'Dopo il secondo livello'],
+            ['after_3', 'Dopo il terzo livello'],
+          ],
+          description:
+            "Dove inserire il livello delle metriche nell'albero. Esempio: Dopo l'ultimo livello dà Sede > Ambulatorio > Metrica; Prima del primo livello dà Metrica > Sede > Ambulatorio, con i valori di ogni metrica sotto la sua riga.",
+          visibility: isMetricsRowsOn,
+        },
+      },
+      {
+        name: 'metricsRowSubtotals',
+        config: {
+          type: 'CheckboxControl',
+          label: 'Metriche anche sui livelli superiori',
+          renderTrigger: true,
+          default: true,
+          description:
+            'Mostra sotto ogni nodo padre le righe metrica con il suo subtotale. Esempio: la riga Sede Roma ha Ricavi e Costi con i totali della sede prima dei suoi ambulatori.',
+          visibility: isMetricsRowsOn,
         },
       },
     ],

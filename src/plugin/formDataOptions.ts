@@ -28,6 +28,7 @@ import { normalizeConditionalFormatting } from '../utils/conditionalFormatting';
 import { normalizeDimensionLimits, DimensionLimitRule } from '../utils/dimensionLimits';
 import { normalizeGoals } from '../utils/goalBenchmark';
 import { normalizeMetricDefinitions } from '../utils/metricSemantics';
+import { parseList } from './controls/listModel';
 import { normalizeTableCalculations, TableCalculationConfig } from '../utils/tableCalculations';
 import { DEFAULT_SUPPRESSION_LABEL, SuppressionOptions, parseSuppressionMetrics } from '../utils/suppression';
 import { getTheme, ResolvedTheme } from '../utils/themes';
@@ -37,6 +38,20 @@ import { msg } from '../i18n';
  * Normalized chart options. Every camelCase control has a legacy snake_case alias:
  * the resolution order below is part of the plugin contract with saved charts.
  */
+/**
+ * Livello delle metriche sulle righe: 'last' dopo l'ultima dimensione, 'top' prima della prima,
+ * 'after_N' dopo la dimensione N (1, 2 o 3).
+ */
+export const METRICS_ROW_LEVELS = ['last', 'top', 'after_1', 'after_2', 'after_3'] as const;
+export type MetricsRowLevel = (typeof METRICS_ROW_LEVELS)[number];
+
+/** Quante dimensioni stanno sopra il livello metrica, data la scelta e il numero di dimensioni. */
+export function metricsRowPosition(level: MetricsRowLevel, dimensionCount: number): number {
+  if (level === 'top') return 0;
+  if (level === 'last') return dimensionCount;
+  return Math.min(Number(level.slice('after_'.length)), dimensionCount);
+}
+
 export interface TransformOptions {
   hierarchyType: HierarchyType;
   dimensions: string[];
@@ -53,6 +68,12 @@ export interface TransformOptions {
   showSubtotals: boolean;
   showGrandTotal: boolean;
   grandTotalPosition: 'top' | 'bottom';
+  /** Metriche citate dalle formule e non scelte nel grafico: aggregate nell'albero, mai colonne. */
+  hiddenMetrics: string[];
+  /** Metriche sulle righe: le metriche diventano un livello dell'albero. */
+  metricsOnRows: boolean;
+  metricsRowLevel: MetricsRowLevel;
+  metricsRowSubtotals: boolean;
   stickyHeader: boolean;
   enableSearch: boolean;
   compactMode: boolean;
@@ -194,6 +215,41 @@ export function getColumnName(column: any): string {
   return typeof column === 'string' ? column : column?.column_name || column?.label || '';
 }
 
+/**
+ * Metriche salvate del dataset che le formule citano ma il grafico non mostra: la query le chiede
+ * e l'albero le aggrega, senza farne colonne. Il controllo "Metriche calcolate" le registra in `operands`.
+ */
+export function resolveHiddenMetrics(formData: any, selectedMetrics: string[]): string[] {
+  const rows = parseList(formData.calculatedMetrics ?? formData.calculated_metrics).rows;
+  const hidden: string[] = [];
+  for (const row of rows) {
+    const operands = Array.isArray(row.operands) ? row.operands : [];
+    for (const name of operands) {
+      if (typeof name === 'string' && name && !selectedMetrics.includes(name) && !hidden.includes(name)) hidden.push(name);
+    }
+  }
+  return hidden;
+}
+
+/**
+ * Definizioni di metrica del grafico: il JSON delle definizioni, più le metriche calcolate del
+ * controllo "Metriche calcolate" (sempre di tipo formula). A parità di nome vince il JSON.
+ */
+export function resolveMetricDefinitions(formData: any): MetricDefinition[] {
+  const base = normalizeMetricDefinitions(
+    formData.metricDefinitions ??
+      formData.metric_definitions ??
+      formData.metricDefinitionsJson ??
+      formData.metric_definitions_json,
+  );
+  const known = new Set(base.map(def => def.metric));
+  const calculated = parseList(formData.calculatedMetrics ?? formData.calculated_metrics).rows.map(row => ({
+    ...row,
+    type: 'formula',
+  }));
+  return [...base, ...normalizeMetricDefinitions(calculated).filter(def => !known.has(def.metric))];
+}
+
 export function resolveTransformOptions(mergedFormData: any): TransformOptions {
   const {
     hierarchyType = 'multi_dimension',
@@ -291,6 +347,7 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     dimensionColumns: getDimensionColumns(rawDimensions),
     pivotDimensions,
     metrics: getMetricNames(rawMetrics),
+    hiddenMetrics: resolveHiddenMetrics(mergedFormData, getMetricNames(rawMetrics)),
     idColumn: getColumnName(idColumn),
     parentIdColumn: getColumnName(parentIdColumn),
     labelColumn: getColumnName(labelColumn),
@@ -301,6 +358,16 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     showSubtotals: showSubtotals ?? true,
     showGrandTotal: showGrandTotal ?? true,
     grandTotalPosition: grandTotalPosition || grand_total_position || 'top',
+    metricsOnRows: Boolean(mergedFormData.metricsOnRows ?? mergedFormData.metrics_on_rows ?? false),
+    metricsRowLevel: pickChoice(
+      METRICS_ROW_LEVELS,
+      'last',
+      mergedFormData.metricsRowLevel,
+      mergedFormData.metrics_row_level,
+    ),
+    metricsRowSubtotals: Boolean(
+      mergedFormData.metricsRowSubtotals ?? mergedFormData.metrics_row_subtotals ?? true,
+    ),
     stickyHeader: Boolean(stickyHeader ?? sticky_header ?? true),
     enableSearch: Boolean(enableSearch ?? enable_search ?? true),
     compactMode: Boolean(compactMode ?? compact_mode ?? false),
@@ -373,20 +440,10 @@ export function resolveTransformOptions(mergedFormData: any): TransformOptions {
     comparisonReferencePeriod: baseline.referencePeriod,
     comparisonStrategy: baseline.strategy,
     goals: normalizeGoals(mergedFormData.goals),
-    metricDefinitions: normalizeMetricDefinitions(
-      mergedFormData.metricDefinitions ??
-        mergedFormData.metric_definitions ??
-        mergedFormData.metricDefinitionsJson ??
-        mergedFormData.metric_definitions_json,
-    ),
+    metricDefinitions: resolveMetricDefinitions(mergedFormData),
     tableCalculations: normalizeTableCalculations(
       mergedFormData.tableCalculations ?? mergedFormData.table_calculations,
-      normalizeMetricDefinitions(
-        mergedFormData.metricDefinitions ??
-          mergedFormData.metric_definitions ??
-          mergedFormData.metricDefinitionsJson ??
-          mergedFormData.metric_definitions_json,
-      ),
+      resolveMetricDefinitions(mergedFormData),
     ),
     dimensionLimits: normalizeDimensionLimits(
       mergedFormData.dimensionLimits ?? mergedFormData.dimension_limits,

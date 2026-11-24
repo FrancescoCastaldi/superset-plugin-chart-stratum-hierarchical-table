@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-24
+
+### Added
+- **Calculated metrics (`formula`)**: a metric definition with `type: "formula"` and a `formula` such as `([ricavi] - costi) / ricavi * 100` is computed on every row from the aggregated operands: leaves, parent rows, Grand Total and row totals. Never a sum or average of the children. Operands are other metrics (in brackets when the name has spaces or symbols), with `+ - * /`, parentheses, `abs`, `min`, `max`, `round`. A division by zero or a missing operand gives an empty cell. A formula may cite another formula; cycles are dropped. Optional `label` sets the column title.
+- **"Metriche calcolate" control** in the Dati section: a row editor (name, formula, title, format, decimals) with a chip for every metric saved in the dataset. Drag a chip into the formula box or click it to insert `[metric]` at the caret. Inline errors for a formula that does not parse, and a warning for metrics that are neither in the chart nor in the dataset. Saved metrics cited by a formula but not shown in the chart are added to the query as hidden operands (no column) and aggregated, so the formula also works on parent rows, the grand total and pivot row totals.
+- **Metrics on rows (`metricsOnRows`)**: the metrics become a level of the tree (`Sede > Ambulatorio > Metrica`), with one row per metric and the periods as columns (or a single "Valore" column without pivot). Options: level position (after the last level, before the first, after the first, second or third), and subtotal metric rows on the upper levels. Not available with the two-way pivot.
+
 ### Fixed
 - Every CSS rule of the chart (about 180 selectors, 90 of them with generic class names such as `.empty-state` or `.toolbar-btn`) now sits under `.superset-hierarchical-table-container`, so it cannot restyle same-named classes of Superset. A test checks it.
 
@@ -442,7 +449,8 @@ Production hardening: the chart is easier to set up, fully in Italian, safer to 
 ### Added
 - Initial release for the Hierarchical Table plugin.
 
-[Unreleased]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v1.0.0...v1.1.0
 [0.10.0]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v0.9.0...v0.10.0
 [0.4.1]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/FrancescoCastaldi/superset-plugin-chart-hierarchical-table/compare/v0.3.3...v0.4.0

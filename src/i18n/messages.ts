@@ -101,6 +101,8 @@ export const MESSAGES = {
   // Sparkline
   'sparkline.label': 'Andamento sui periodi',
   'sparkline.range': '{metric}: da {from} a {to}',
+  'metricRows.value': 'Valore',
+  'metricRows.total': 'Totale',
 
   // Esportazione CSV
   'csv.base': '{title} (Base)',
